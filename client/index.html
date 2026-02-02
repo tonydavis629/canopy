@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canopy - Code Visualization</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        
+        #container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        #sidebar {
+            width: 300px;
+            background: #252526;
+            border-right: 1px solid #3e3e42;
+            padding: 16px;
+            overflow-y: auto;
+        }
+        
+        #graph-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #graph {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .node {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .node:hover {
+            opacity: 0.8;
+        }
+        
+        .node-container {
+            fill: #2d2d30;
+            stroke: #007acc;
+            stroke-width: 2;
+        }
+        
+        .node-file {
+            fill: #3c3c3c;
+            stroke: #4ec9b0;
+            stroke-width: 1.5;
+        }
+        
+        .node-directory {
+            fill: #2d2d30;
+            stroke: #569cd6;
+            stroke-width: 2;
+        }
+        
+        .node-label {
+            fill: #d4d4d4;
+            font-size: 14px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+        }
+        
+        .edge {
+            stroke: #686868;
+            stroke-width: 1;
+            fill: none;
+        }
+        
+        .edge-label {
+            fill: #858585;
+            font-size: 12px;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+        }
+        
+        #status {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: rgba(30, 30, 30, 0.9);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            background: rgba(30, 30, 30, 0.9);
+            padding: 12px;
+            border-radius: 4px;
+        }
+        
+        .control-button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            margin: 4px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .control-button:hover {
+            background: #005a9e;
+        }
+        
+        .change-indicator {
+            fill: #ff6b6b;
+            stroke: #ff4444;
+            stroke-width: 2;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="sidebar">
+            <h3>Canopy</h3>
+            <p>Live code visualization</p>
+            <hr>
+            <div id="node-details">
+                <p>Select a node to see details</p>
+            </div>
+        </div>
+        <div id="graph-container">
+            <div id="controls">
+                <button class="control-button" onclick="resetZoom()">Reset Zoom</button>
+                <button class="control-button" onclick="toggleAnimation()">Toggle Animation</button>
+            </div>
+            <div id="status">Connecting...</div>
+            <svg id="graph"></svg>
+        </div>
+    </div>
+    
+    <script src="graph.js"></script>
+    <script src="protocol.js"></script>
+</body>
+</html>

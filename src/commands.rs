@@ -42,10 +42,8 @@ pub fn clear(root: PathBuf) -> anyhow::Result<()> {
 fn walk_filesystem(root: &PathBuf, graph: &mut Graph) -> anyhow::Result<()> {
     use std::fs;
     use std::collections::VecDeque;
-    use std::borrow::Cow;
     
     let mut queue = VecDeque::new();
-    queue.push_back(root.clone());
     
     // Add root directory node
     let root_node = canopy_core::GraphNode {
@@ -55,7 +53,7 @@ fn walk_filesystem(root: &PathBuf, graph: &mut Graph) -> anyhow::Result<()> {
             .and_then(|n| n.to_str())
             .unwrap_or("root")
             .to_string(),
-        qualified_name: "".to_string(),
+        qualified_name: String::new(),
         file_path: root.clone(),
         line_start: None,
         line_end: None,
@@ -66,8 +64,9 @@ fn walk_filesystem(root: &PathBuf, graph: &mut Graph) -> anyhow::Result<()> {
         metadata: std::collections::HashMap::new(),
     };
     let root_id = graph.add_node(root_node);
+    queue.push_back((root.clone(), root_id));
     
-    while let Some(current_path) = queue.pop_front() {
+    while let Some((current_path, parent_id)) = queue.pop_front() {
         tracing::debug!("Processing directory: {}", current_path.display());
         
         let entries = match fs::read_dir(&current_path) {
@@ -102,7 +101,7 @@ fn walk_filesystem(root: &PathBuf, graph: &mut Graph) -> anyhow::Result<()> {
                     id: canopy_core::NodeId(0),
                     kind: canopy_core::NodeKind::Directory,
                     name: dir_name_str.clone(),
-                    qualified_name: dir_name_str,
+                    qualified_name: dir_name_str.clone(),
                     file_path: path.clone(),
                     line_start: None,
                     line_end: None,
@@ -115,24 +114,21 @@ fn walk_filesystem(root: &PathBuf, graph: &mut Graph) -> anyhow::Result<()> {
                 let child_id = graph.add_node(dir_node);
                 
                 // Add containment edge
-                let parent_name = current_path.file_name()
-                    .unwrap_or_else(|| std::borrow::Cow::Borrowed("root"))
-                    .to_string_lossy();
-                let parent_id = canopy_core::NodeId::new(&current_path, canopy_core::NodeKind::Directory, &parent_name);
+                let label = format!("contains {}", dir_name_str);
                 let edge = canopy_core::GraphEdge {
-                    id: canopy_core::EdgeId(0),
+                    id: canopy_core::EdgeId(0), // Will be assigned by graph
                     source: parent_id,
                     target: child_id,
                     kind: canopy_core::EdgeKind::Contains,
                     edge_source: canopy_core::EdgeSource::Structural,
                     confidence: 1.0,
-                    label: Some("contains".to_string()),
+                    label: Some(label),
                     file_path: None,
                     line: None,
                 };
                 graph.add_edge(edge);
                 
-                queue.push_back(path);
+                queue.push_back((path, child_id));
             } else if path.is_file() {
                 // Add file node
                 let language = Language::from_path(&path);
@@ -141,11 +137,11 @@ fn walk_filesystem(root: &PathBuf, graph: &mut Graph) -> anyhow::Result<()> {
                     id: canopy_core::NodeId(0),
                     kind: canopy_core::NodeKind::File,
                     name: file_name_str.clone(),
-                    qualified_name: file_name_str,
+                    qualified_name: file_name_str.clone(),
                     file_path: path.clone(),
                     line_start: None,
                     line_end: None,
-                    language,
+                    language: Some(language),
                     is_container: true,
                     child_count: 0,
                     loc: None,
@@ -154,10 +150,7 @@ fn walk_filesystem(root: &PathBuf, graph: &mut Graph) -> anyhow::Result<()> {
                 let child_id = graph.add_node(file_node);
                 
                 // Add containment edge
-                let parent_name = current_path.file_name()
-                    .unwrap_or_else(|| std::borrow::Cow::Borrowed("root"))
-                    .to_string_lossy();
-                let parent_id = canopy_core::NodeId::new(&current_path, canopy_core::NodeKind::Directory, &parent_name);
+                let label = format!("contains {}", file_name_str);
                 let edge = canopy_core::GraphEdge {
                     id: canopy_core::EdgeId(0),
                     source: parent_id,
@@ -165,7 +158,7 @@ fn walk_filesystem(root: &PathBuf, graph: &mut Graph) -> anyhow::Result<()> {
                     kind: canopy_core::EdgeKind::Contains,
                     edge_source: canopy_core::EdgeSource::Structural,
                     confidence: 1.0,
-                    label: Some("contains".to_string()),
+                    label: Some(label),
                     file_path: None,
                     line: None,
                 };

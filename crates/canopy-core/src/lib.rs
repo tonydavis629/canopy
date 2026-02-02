@@ -8,6 +8,9 @@ pub mod diff;
 pub mod workspace;
 pub mod cache;
 
+#[cfg(test)]
+pub mod test_utils;
+
 pub use model::{NodeId, EdgeId, NodeKind, Language, EdgeKind, EdgeSource, GraphNode, GraphEdge, AggregatedEdge};
 pub use graph::Graph;
 pub use symbols::SymbolTable;
