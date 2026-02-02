@@ -31,7 +31,7 @@
    - Commands: serve, index, clear, version
    - Filesystem walking with Directory/File nodes
    - Contains edges between parent/child
-   - Successfully indexed 5017 nodes, 5016 edges
+   - Successfully indexed 5158 nodes, 5157 edges
 
 4. **HTTP Server**
    - Axum-based server on port 7890
@@ -45,51 +45,73 @@
    - WebSocket connection established
    - Responsive layout with sidebar
 
-### 🔄 In Progress
-1. **WebSocket Protocol Alignment**
-   - Frontend expects `full_graph` / `graph_diff` messages
-   - Server needs to send initial graph on connect
-   - Message schema standardization
+6. **WebSocket Protocol Fix** ✨
+   - Server now sends `full_graph` message on WebSocket connect
+   - Graph data properly serialized with nodes/edges arrays
+   - Frontend receives and can process graph data
 
-2. **Graph Visualization**
-   - Nodes not rendering yet (protocol mismatch)
-   - Need to implement D3.js graph rendering
+7. **Tree-sitter Language Extraction** 🌳
+   - Implemented Rust language extractor with tree-sitter
+   - Implemented TypeScript language extractor with tree-sitter
+   - Extracts functions, classes, methods, and imports
+   - Creates GraphNode and GraphEdge entries for symbols
+   - All language extractors properly structured
+
+### 🔄 In Progress
+1. **Graph Visualization**
+   - Nodes not rendering yet (need to verify D3.js integration)
+   - Need to implement proper graph layout
    - Add interactive features (zoom, pan, click)
 
+2. **File Watching**
+   - Watch for file system changes
+   - Send updates through WebSocket
+   - Integrate with notify crate
+
+3. **Language Extraction Enhancement**
+   - Test tree-sitter extractors with real code
+   - Improve symbol detection accuracy
+   - Add more language support
+
 ### 📋 Next Steps
-1. Fix WebSocket protocol to send full graph on connect
-2. Implement D3.js graph rendering
-3. Add node click handlers for sidebar details
-4. Implement file watching with notify crate
-5. Add tree-sitter language extraction
-6. Create comprehensive test suite
+1. Implement D3.js graph rendering
+2. Add node click handlers for sidebar details
+3. Implement file watching with notify crate
+4. Test tree-sitter extractors with real codebases
+5. Create comprehensive test suite
 
 ### 🧪 Testing
 - Manual browser testing completed
 - Server accessible at http://127.0.0.1:7890
 - API endpoint verified working
 - WebSocket connection established
+- Tree-sitter extractors compile successfully
 
 ### 📁 Key Files
 - `/src/main.rs` - CLI entry point
 - `/src/commands.rs` - Command implementations
 - `/crates/canopy-server/src/lib.rs` - Server core
+- `/crates/canopy-server/src/websocket.rs` - WebSocket protocol
+- `/crates/canopy-indexer/src/languages/rust.rs` - Rust extractor
+- `/crates/canopy-indexer/src/languages/typescript.rs` - TypeScript extractor
 - `/client/index.html` - Browser interface
 - `/client/graph.js` - Visualization logic
 - `/client/protocol.js` - WebSocket handling
 
 ## Development Notes
-- Using OpenCode for all code implementations
+- Using coding-agent skill (Claude Code) for implementations
 - Following test-driven development
 - Committing directly to main when confident
 - Manual testing with Chrome browser
 - Focus on M1 scope only (no M2 features yet)
 
 ## Blockers
-None currently - proceeding with WebSocket protocol fixes
+None currently - proceeding with graph visualization
 
 ## Recent Commits
 - Working CLI with filesystem indexing
 - HTTP server implementation
 - Browser client scaffolding
 - WebSocket connection establishment
+- WebSocket protocol fix (full_graph message)
+- Tree-sitter language extraction for Rust/TypeScript

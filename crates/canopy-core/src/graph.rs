@@ -1,14 +1,23 @@
 //! Graph wrapper using petgraph::StableDiGraph with custom NodeId/EdgeId
 
 use crate::model::*;
-use petgraph::stable_graph::{StableDiGraph, NodeIndex, EdgeIndex};
-use petgraph::Direction;
+use petgraph::stable_graph::{EdgeIndex, NodeIndex, StableDiGraph};
 use petgraph::visit::EdgeRef;
+use petgraph::Direction;
 use std::collections::HashSet;
 
 /// The code graph — a directed multigraph with stable node/edge indices.
 pub struct Graph {
     inner: StableDiGraph<GraphNode, GraphEdge>,
+}
+
+impl std::fmt::Debug for Graph {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Graph")
+            .field("node_count", &self.inner.node_count())
+            .field("edge_count", &self.inner.edge_count())
+            .finish()
+    }
 }
 
 impl Graph {
@@ -60,9 +69,18 @@ impl Graph {
         self.inner.edge_count()
     }
 
+    /// Iterate over all nodes.
+    pub fn all_nodes(&self) -> impl Iterator<Item = &GraphNode> {
+        self.inner
+            .node_indices()
+            .filter_map(move |idx| self.inner.node_weight(idx))
+    }
+
     /// Iterate over all edges.
     pub fn all_edges(&self) -> impl Iterator<Item = &GraphEdge> {
-        self.inner.edge_indices().filter_map(move |idx| self.inner.edge_weight(idx))
+        self.inner
+            .edge_indices()
+            .filter_map(move |idx| self.inner.edge_weight(idx))
     }
 
     /// Get all outgoing edges from a node.
@@ -113,11 +131,14 @@ impl Graph {
 
     /// Get all nodes of a specific kind.
     pub fn nodes_of_kind(&self, kind: NodeKind) -> impl Iterator<Item = NodeId> + '_ {
-        self.inner.node_indices().filter(move |&idx| {
-            self.inner
-                .node_weight(idx)
-                .map_or(false, |n| n.kind == kind)
-        }).map(|idx| NodeId(idx.index() as u64))
+        self.inner
+            .node_indices()
+            .filter(move |&idx| {
+                self.inner
+                    .node_weight(idx)
+                    .map_or(false, |n| n.kind == kind)
+            })
+            .map(|idx| NodeId(idx.index() as u64))
     }
 
     /// Remove a node and all its edges.

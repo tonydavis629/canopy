@@ -1,6 +1,7 @@
 //! CLI command implementations
 
 use canopy_core::{Graph, Language};
+use canopy_server::{CanopyServer, ServerConfig};
 use std::path::PathBuf;
 
 pub async fn serve(root: PathBuf, host: String, port: u16, _open: bool) -> anyhow::Result<()> {
@@ -12,10 +13,10 @@ pub async fn serve(root: PathBuf, host: String, port: u16, _open: bool) -> anyho
     
     tracing::info!("Indexed {} nodes, {} edges", graph.node_count(), graph.edge_count());
     
-    // TODO: Start server
-    tracing::info!("Server not yet implemented");
-    
-    Ok(())
+    // Create and start server
+    let config = ServerConfig { host, port };
+    let server = CanopyServer::new(graph, config);
+    server.start().await
 }
 
 pub async fn index(root: PathBuf) -> anyhow::Result<()> {

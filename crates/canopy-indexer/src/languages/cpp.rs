@@ -1,1 +1,1 @@
-pub struct CppExtractor;
+use super::{ExtractionResult, LanguageExtractor}; use canopy_core::{GraphNode, GraphEdge}; use std::path::PathBuf; use anyhow::Result; pub struct cppExtractor; impl LanguageExtractor for cppExtractor { fn extract(&self, _path: &PathBuf, _content: &[u8]) -> Result<ExtractionResult> { Ok(ExtractionResult { nodes: vec![], edges: vec![], }) } }
