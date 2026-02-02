@@ -13,9 +13,14 @@ pub struct OpenAIProvider {
 
 impl OpenAIProvider {
     pub fn new(api_key: Option<String>) -> Self {
+        // Use OpenRouter API key from .env file
+        let api_key = api_key.or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
+            .or_else(|| std::env::var("openrouter_api_key").ok())
+            .unwrap_or_default();
+        
         Self {
             client: reqwest::Client::new(),
-            api_key: api_key.unwrap_or_else(|| std::env::var("OPENAI_API_KEY").unwrap_or_default()),
+            api_key,
             model: "gpt-4o-mini".to_string(),
         }
     }
@@ -150,17 +155,19 @@ Return JSON in this format:
         };
 
         let response = self.client
-            .post("https://api.openai.com/v1/chat/completions")
+            .post("https://openrouter.ai/api/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
+            .header("HTTP-Referer", "https://github.com/openclaw/openclaw")
+            .header("X-Title", "Canopy")
             .json(&openai_request)
             .send()
             .await
-            .context("Failed to send request to OpenAI")?;
+            .context("Failed to send request to OpenRouter")?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("OpenAI API error: {}", error_text);
+            anyhow::bail!("OpenRouter API error: {}", error_text);
         }
 
         let openai_response: OpenAIResponse = response.json().await?;
@@ -240,9 +247,11 @@ Context: {:?}"#,
         };
 
         let response = self.client
-            .post("https://api.openai.com/v1/chat/completions")
+            .post("https://openrouter.ai/api/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
+            .header("HTTP-Referer", "https://github.com/openclaw/openclaw")
+            .header("X-Title", "Canopy")
             .json(&openai_request)
             .send()
             .await?;
@@ -300,9 +309,11 @@ Provide a clear, accurate answer based on the graph data."#,
         };
 
         let response = self.client
-            .post("https://api.openai.com/v1/chat/completions")
+            .post("https://openrouter.ai/api/v1/chat/completions")
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
+            .header("HTTP-Referer", "https://github.com/openclaw/openclaw")
+            .header("X-Title", "Canopy")
             .json(&openai_request)
             .send()
             .await?;
@@ -312,6 +323,6 @@ Provide a clear, accurate answer based on the graph data."#,
     }
     
     fn name(&self) -> &str {
-        "OpenAI"
+        "OpenAI (via OpenRouter)"
     }
 }
