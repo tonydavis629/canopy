@@ -80,6 +80,30 @@ tempfile = "3"
 tokio-test = "0.4"
 criterion = "0.5"
 
+# ── Binary dependencies ─────────────────────────────────
+[package]
+name = "canopy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "canopy"
+path = "src/main.rs"
+
+[dependencies]
+canopy-core = { path = "crates/canopy-core" }
+canopy-indexer = { path = "crates/canopy-indexer" }
+canopy-ai = { path = "crates/canopy-ai" }
+canopy-server = { path = "crates/canopy-server" }
+canopy-watcher = { path = "crates/canopy-watcher" }
+tokio = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+
 [profile.release]
 opt-level = 3
 lto = true
