@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Canopy Debug</title>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+</head>
+<body>
+    <h1>Canopy Debug Test</h1>
+    <div id="status">Loading...</div>
+    <svg id="graph" width="800" height="600"></svg>
+    
+    <script>
+        // Simple test data
+        const testData = {
+            nodes: [
+                { id: "1", name: "Node 1", kind: "file", x: 100, y: 100 },
+                { id: "2", name: "Node 2", kind: "directory", x: 300, y: 100 },
+                { id: "3", name: "Node 3", kind: "function", x: 200, y: 200 }
+            ],
+            edges: [
+                { source: "1", target: "2", kind: "contains" },
+                { source: "2", target: "3", kind: "contains" }
+            ]
+        };
+        
+        function renderTestGraph(data) {
+            const svg = d3.select("#graph");
+            
+            // Create nodes
+            const nodes = svg.selectAll(".node")
+                .data(data.nodes)
+                .enter()
+                .append("g")
+                .attr("class", "node")
+                .attr("transform", d => `translate(${d.x}, ${d.y})`);
+            
+            nodes.append("rect")
+                .attr("width", 80)
+                .attr("height", 40)
+                .attr("x", -40)
+                .attr("y", -20)
+                .attr("rx", 4)
+                .style("fill", "#2d2d30")
+                .style("stroke", "#007acc")
+                .style("stroke-width", 2);
+            
+            nodes.append("text")
+                .attr("class", "node-label")
+                .text(d => d.name)
+                .style("fill", "#d4d4d4")
+                .style("text-anchor", "middle")
+                .style("dominant-baseline", "middle");
+            
+            document.getElementById("status").textContent = "Graph rendered successfully!";
+        }
+        
+        // Test WebSocket connection
+        function testWebSocket() {
+            const ws = new WebSocket('ws://127.0.0.1:7890/ws');
+            
+            ws.onopen = () => {
+                console.log('WebSocket connected!');
+                document.getElementById("status").textContent = "WebSocket connected!";
+                
+                // Request full graph
+                ws.send(JSON.stringify({ type: 'request_full_graph' }));
+            };
+            
+            ws.onmessage = (event) => {
+                console.log('Received message:', event.data);
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'full_graph') {
+                    document.getElementById("status").textContent = 
+                        `Received full graph with ${data.graph.nodes.length} nodes and ${data.graph.edges.length} edges`;
+                    renderTestGraph(data.graph);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                document.getElementById("status").textContent = "WebSocket error!";
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket closed');
+                document.getElementById("status").textContent = "WebSocket closed!";
+            };
+        }
+        
+        // Run test
+        testWebSocket();
+    </script>
+</body>
+</html>

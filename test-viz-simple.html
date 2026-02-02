@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Canopy Visualization Test</title>
+    <style>
+        body { margin: 0; font-family: sans-serif; background: #1e1e1e; color: white; }
+        #graph { width: 100vw; height: 100vh; }
+        .node { cursor: pointer; }
+        .node rect { fill: #3c3c3c; stroke: #007acc; stroke-width: 2; }
+        .node text { fill: white; text-anchor: middle; }
+        .edge path { stroke: #686868; stroke-width: 2; fill: none; }
+    </style>
+</head>
+<body>
+    <h1>Canopy Graph Visualization Test</h1>
+    <div id="status">Loading...</div>
+    <svg id="graph"></svg>
+    
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    <script>
+        // Test the visualization with sample data
+        async function testVisualization() {
+            try {
+                // Fetch graph data from server
+                const response = await fetch('http://127.0.0.1:7890/api/graph');
+                const data = await response.json();
+                
+                document.getElementById('status').textContent = `Loaded ${data.nodes.length} nodes, ${data.edges.length} edges`;
+                
+                // Create simple visualization
+                const svg = d3.select('#graph');
+                const width = window.innerWidth;
+                const height = window.innerHeight;
+                
+                // Create force simulation
+                const simulation = d3.forceSimulation(data.nodes)
+                    .force('link', d3.forceLink(data.edges).id(d => d.id).distance(100))
+                    .force('charge', d3.forceManyBody().strength(-300))
+                    .force('center', d3.forceCenter(width / 2, height / 2));
+                
+                // Draw edges
+                const link = svg.append('g')
+                    .selectAll('line')
+                    .data(data.edges)
+                    .enter().append('line')
+                    .attr('stroke', '#999')
+                    .attr('stroke-width', 2);
+                
+                // Draw nodes
+                const node = svg.append('g')
+                    .selectAll('g')
+                    .data(data.nodes)
+                    .enter().append('g')
+                    .attr('class', 'node');
+                
+                node.append('circle')
+                    .attr('r', 20)
+                    .attr('fill', d => {
+                        switch(d.kind) {
+                            case 'Directory': return '#569cd6';
+                            case 'File': return '#4ec9b0';
+                            case 'Function': return '#dcdcaa';
+                            case 'Class': return '#4ec9b0';
+                            default: return '#858585';
+                        }
+                    });
+                
+                node.append('text')
+                    .text(d => d.name.length > 10 ? d.name.substring(0, 10) + '...' : d.name)
+                    .attr('dy', 35)
+                    .style('font-size', '10px');
+                
+                // Update positions on tick
+                simulation.on('tick', () => {
+                    link
+                        .attr('x1', d => d.source.x)
+                        .attr('y1', d => d.source.y)
+                        .attr('x2', d => d.target.x)
+                        .attr('y2', d => d.target.y);
+                    
+                    node.attr('transform', d => `translate(${d.x},${d.y})`);
+                });
+                
+                // Add drag behavior
+                node.call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+                
+                function dragstarted(event, d) {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x;
+                    d.fy = d.y;
+                }
+                
+                function dragged(event, d) {
+                    d.fx = event.x;
+                    d.fy = event.y;
+                }
+                
+                function dragended(event, d) {
+                    if (!event.active) simulation.alphaTarget(0);
+                    d.fx = null;
+                    d.fy = null;
+                }
+                
+            } catch (error) {
+                document.getElementById('status').textContent = `Error: ${error.message}`;
+                console.error('Error:', error);
+            }
+        }
+        
+        // Run test on page load
+        testVisualization();
+    </script>
+</body>
+</html>

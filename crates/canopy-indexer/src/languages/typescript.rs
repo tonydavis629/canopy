@@ -3,12 +3,19 @@
 use super::{ExtractionResult, LanguageExtractor};
 use canopy_core::{GraphNode, GraphEdge, NodeKind, EdgeSource, Language, NodeId, EdgeId};
 use std::path::PathBuf;
-use tree_sitter::{Parser, Language as TSLanguage, Node, Point};
+use tree_sitter::{Language as TSLanguage, Node, Point};
 use anyhow::Result;
+use crate::parser_pool::{ParserPool, ParseRequest, FileType};
 
-pub struct TypeScriptExtractor;
+pub struct TypeScriptExtractor {
+    parser_pool: ParserPool,
+}
 
 impl TypeScriptExtractor {
+    pub fn new(parser_pool: ParserPool) -> Self {
+        Self { parser_pool }
+    }
+
     fn get_language() -> TSLanguage {
         tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()
     }
@@ -92,12 +99,18 @@ impl TypeScriptExtractor {
 
 impl LanguageExtractor for TypeScriptExtractor {
     fn extract(&self, path: &PathBuf, content: &[u8]) -> Result<ExtractionResult> {
-        let mut parser = Parser::new();
-        parser.set_language(&Self::get_language())?;
-        
         let source_code = std::str::from_utf8(content)?;
-        let tree = parser.parse(source_code, None)
-            .ok_or_else(|| anyhow::anyhow!("Failed to parse TypeScript file"))?;
+        
+        // Use the parser pool to parse the content
+        // Since LanguageExtractor is not async, we use block_in_place to handle the async call
+        let request = ParseRequest {
+            file_type: FileType::TypeScript,
+            content: source_code.to_string(),
+            path: path.clone(),
+        };
+        
+        let parse_result = self.parser_pool.parse_blocking(request)?;
+        let tree = parse_result.tree;
         
         let mut nodes = Vec::new();
         let mut edges = Vec::new();
@@ -105,7 +118,7 @@ impl LanguageExtractor for TypeScriptExtractor {
         
         // Walk the AST
         let root_node = tree.root_node();
-        let mut cursor = root_node.walk();
+        let cursor = root_node.walk();
         
         fn visit_node(
             node: Node,
@@ -161,9 +174,10 @@ impl LanguageExtractor for TypeScriptExtractor {
 mod tests {
     use super::*;
     
-    #[test]
-    fn test_extract_typescript() {
-        let extractor = TypeScriptExtractor;
+    #[tokio::test]
+    async fn test_extract_typescript() {
+        let parser_pool = crate::parser_pool::create_parser_pool();
+        let extractor = TypeScriptExtractor::new(parser_pool);
         let code = r#"
 import { UserService } from './services/user';
 import * as utils from './utils';
@@ -188,8 +202,8 @@ export function createController(service: UserService): UserController {
         let path = PathBuf::from("test.ts");
         let result = extractor.extract(&path, code.as_bytes()).unwrap();
         
-        // Should extract 1 class and 2 functions
-        assert_eq!(result.nodes.len(), 3);
+        // Should extract 1 class, 2 methods, and 1 function
+        assert_eq!(result.nodes.len(), 4);
         assert_eq!(result.edges.len(), 2); // 2 imports
     }
 }

@@ -6,3 +6,7 @@ pub mod extractor;
 pub mod languages;
 pub mod config;
 pub mod heuristics;
+pub mod parser_pool;
+
+pub use parser_pool::{ParserPool, ParseResult, ParseRequest, FileType, FileParseResult};
+pub use extractor::{ExtractionResult, LanguageExtractor};

@@ -1,8 +1,10 @@
 //! CLI command implementations
 
 use canopy_core::{Graph, Language};
-use canopy_server::{CanopyServer, ServerConfig};
+use canopy_server::{CanopyServer, ServerConfig, ServerState};
+use canopy_watcher::WatcherService;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 pub async fn serve(root: PathBuf, host: String, port: u16, _open: bool) -> anyhow::Result<()> {
     tracing::info!("Starting Canopy server on {}:{}", host, port);
@@ -13,10 +15,39 @@ pub async fn serve(root: PathBuf, host: String, port: u16, _open: bool) -> anyho
     
     tracing::info!("Indexed {} nodes, {} edges", graph.node_count(), graph.edge_count());
     
-    // Create and start server
+    // Create server with shared graph state
     let config = ServerConfig { host, port };
     let server = CanopyServer::new(graph, config);
+    let state = server.state();
+    
+    // Start file watcher in background task
+    let watcher_root = root.clone();
+    let watcher_state = Arc::clone(&state);
+    tokio::spawn(async move {
+        if let Err(e) = run_watcher(watcher_root, watcher_state).await {
+            tracing::error!("File watcher error: {}", e);
+        }
+    });
+    
+    // Start the server
     server.start().await
+}
+
+/// Run the file watcher and broadcast changes to WebSocket clients
+async fn run_watcher(root: PathBuf, state: Arc<ServerState>) -> anyhow::Result<()> {
+    tracing::info!("Starting file watcher for: {}", root.display());
+    
+    // Create watcher service with shared graph and broadcast channel
+    let graph = Arc::clone(&state.graph);
+    let watcher = WatcherService::with_broadcast(&root, graph, state.diff_tx.clone())?;
+    
+    // Start watching
+    watcher.start_watching().await?;
+    
+    // Process events (this runs indefinitely)
+    watcher.process_events().await?;
+    
+    Ok(())
 }
 
 pub async fn index(root: PathBuf) -> anyhow::Result<()> {

@@ -72,15 +72,81 @@
             pointer-events: none;
         }
         
-        .edge {
+        .node-default {
+            fill: #3c3c3c;
+            stroke: #858585;
+            stroke-width: 1.5;
+        }
+
+        #search-container {
+            margin-bottom: 16px;
+        }
+
+        #search-input {
+            width: 100%;
+            padding: 8px;
+            background: #3c3c3c;
+            border: 1px solid #5a5a5a;
+            color: #d4d4d4;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        #search-button {
+            width: 100%;
+            padding: 8px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #search-button:hover {
+            background: #005a9e;
+        }
+
+        #filters {
+            margin-bottom: 16px;
+        }
+
+        #filters label {
+            display: block;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        #filters input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .node-function {
+            fill: #2d2d30;
+            stroke: #dcdcaa;
+            stroke-width: 1.5;
+        }
+
+        .node-class {
+            fill: #2d2d30;
+            stroke: #4ec9b0;
+            stroke-width: 2;
+        }
+
+        .node-module {
+            fill: #2d2d30;
+            stroke: #c586c0;
+            stroke-width: 2;
+        }
+
+        .edge path {
             stroke: #686868;
-            stroke-width: 1;
+            stroke-width: 1.5;
             fill: none;
         }
-        
+
         .edge-label {
             fill: #858585;
-            font-size: 12px;
+            font-size: 10px;
             text-anchor: middle;
             dominant-baseline: middle;
             pointer-events: none;
@@ -132,6 +198,26 @@
             50% { opacity: 0.5; }
             100% { opacity: 1; }
         }
+        
+        .node.highlighted {
+            opacity: 1;
+            stroke-width: 3;
+            stroke: #ffcc00;
+        }
+        
+        .node.dimmed {
+            opacity: 0.2;
+        }
+        
+        .edge.highlighted {
+            opacity: 1;
+            stroke-width: 3;
+            stroke: #ffcc00;
+        }
+        
+        .edge.dimmed {
+            opacity: 0.2;
+        }
     </style>
 </head>
 <body>
@@ -139,6 +225,16 @@
         <div id="sidebar">
             <h3>Canopy</h3>
             <p>Live code visualization</p>
+            <hr>
+            <div id="search-container">
+                <input type="text" id="search-input" placeholder="Search nodes..." />
+                <button id="search-button">Search</button>
+            </div>
+            <div id="filters">
+                <label><input type="checkbox" id="filter-directories" checked> Directories</label>
+                <label><input type="checkbox" id="filter-files" checked> Files</label>
+                <label><input type="checkbox" id="filter-functions" checked> Functions</label>
+            </div>
             <hr>
             <div id="node-details">
                 <p>Select a node to see details</p>

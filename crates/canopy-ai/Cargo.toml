@@ -13,6 +13,7 @@ canopy-core = { path = "../canopy-core" }
 tracing = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
+async-trait = { workspace = true }
 
 [dev-dependencies]
 insta = { workspace = true }

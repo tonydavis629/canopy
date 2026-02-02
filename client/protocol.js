@@ -73,7 +73,12 @@ function handleGraphDiff(diff) {
 function handleFullGraph(graph) {
     console.log('Received full graph:', graph);
     window.currentGraphData = graph;
-    renderGraph(graph);
+    // Call renderGraph from the global scope (defined in graph.js)
+    if (typeof window.renderGraph === 'function') {
+        window.renderGraph(graph);
+    } else {
+        console.error('renderGraph function not found');
+    }
 }
 
 // Handle errors

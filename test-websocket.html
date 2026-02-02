@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Canopy Debug - Simple Test</title>
+    <style>
+        body { font-family: monospace; margin: 20px; background: #1e1e1e; color: #d4d4d4; }
+        #log { background: #252526; padding: 10px; margin: 10px 0; height: 300px; overflow-y: auto; }
+        .error { color: #f48771; }
+        .success { color: #89d185; }
+        .info { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <h1>Canopy WebSocket Test</h1>
+    <button onclick="testConnection()">Test WebSocket Connection</button>
+    <button onclick="clearLog()">Clear Log</button>
+    <div id="log"></div>
+    
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toISOString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        function testConnection() {
+            log('Starting WebSocket test...', 'info');
+            
+            try {
+                const ws = new WebSocket('ws://127.0.0.1:7890/ws');
+                
+                ws.onopen = () => {
+                    log('WebSocket connected successfully!', 'success');
+                };
+                
+                ws.onmessage = (event) => {
+                    log(`Received message: ${event.data}`, 'success');
+                    
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'full_graph') {
+                            log(`Graph received: ${data.graph.nodes.length} nodes, ${data.graph.edges.length} edges`, 'success');
+                        }
+                    } catch (e) {
+                        log(`Failed to parse message: ${e.message}`, 'error');
+                    }
+                };
+                
+                ws.onerror = (error) => {
+                    log(`WebSocket error: ${error}`, 'error');
+                };
+                
+                ws.onclose = (event) => {
+                    log(`WebSocket closed: code=${event.code}, reason=${event.reason}`, 'info');
+                };
+                
+                // Close after 5 seconds
+                setTimeout(() => {
+                    ws.close();
+                    log('WebSocket closed by test', 'info');
+                }, 5000);
+                
+            } catch (error) {
+                log(`Failed to create WebSocket: ${error.message}`, 'error');
+            }
+        }
+        
+        // Auto-test on load
+        window.onload = () => {
+            log('Page loaded, ready to test WebSocket connection', 'info');
+        };
+    </script>
+</body>
+</html>

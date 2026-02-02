@@ -3,7 +3,9 @@
 ## Project Overview
 **Canopy** - A Rust CLI tool for live hierarchical code visualization for the AI-agent era.
 
-**Current Focus**: Milestone 1 (Navigable Hierarchy) only - 5-6 weeks scope
+**Current Focus**: Milestone 2 (Semantic Understanding) - 4-5 weeks scope
+
+**Previous Milestone**: ✅ Milestone 1 (Navigable Hierarchy) - COMPLETED
 
 ## Project Structure
 5-crate workspace:
@@ -57,28 +59,61 @@
    - Creates GraphNode and GraphEdge entries for symbols
    - All language extractors properly structured
 
-### 🔄 In Progress
-1. **Graph Visualization**
-   - Nodes not rendering yet (need to verify D3.js integration)
-   - Need to implement proper graph layout
-   - Add interactive features (zoom, pan, click)
+### 🔄 In Progress (Milestone 2)
+1. **Semantic Understanding & AI Integration** ✅ In Progress
+   - ✅ Implemented AI-powered code analysis bridge in `canopy-ai`
+   - ✅ Added semantic relationship detection (Calls, DependsOn, Uses, Configures)
+   - ✅ Created OpenAI provider with GPT-4 integration
+   - ✅ Added local heuristic provider for offline analysis
+   - ✅ Implemented confidence scoring for AI-inferred relationships
+   - ✅ Added budget tracking and caching for API usage
+   - 🔄 Integrate LLM for code understanding and summarization
+   - 🔄 Add Anthropic provider support
 
-2. **File Watching**
-   - Watch for file system changes
-   - Send updates through WebSocket
-   - Integrate with notify crate
+2. **Advanced Language Support**
+   - 🔄 Complete Python language extractor implementation
+   - 🔄 Complete Go language extractor implementation
+   - 🔄 Complete Java language extractor implementation
+   - 🔄 Add support for configuration files (YAML, TOML, JSON)
+   - 🔄 Implement import/require resolution for all languages
 
-3. **Language Extraction Enhancement**
-   - Test tree-sitter extractors with real code
-   - Improve symbol detection accuracy
-   - Add more language support
+3. **Enhanced Visualization**
+   - 🔄 Add hierarchical layout options (tree, radial, force-directed presets)
+   - 🔄 Implement semantic coloring and edge styling
+   - 🔄 Add node clustering and aggregation views
+   - 🔄 Create semantic zoom (show/hide details based on zoom level)
 
-### 📋 Next Steps
-1. Implement D3.js graph rendering
-2. Add node click handlers for sidebar details
-3. Implement file watching with notify crate
-4. Test tree-sitter extractors with real codebases
-5. Create comprehensive test suite
+4. **AI Agent Integration**
+   - 🔄 Add MCP (Model Context Protocol) server support
+   - 🔄 Implement code-aware prompts and context injection
+   - 🔄 Add graph-based code navigation for AI agents
+   - 🔄 Create semantic search with natural language queries
+
+### 📋 Next Steps (Milestone 2)
+1. **AI Bridge Implementation** ✅ Core Complete
+   - ✅ Set up `canopy-ai` crate with LLM integration
+   - ✅ Implement semantic analysis pipeline
+   - ✅ Add relationship inference with confidence scoring
+   - 🔄 Add Anthropic provider support
+   - 🔄 Integrate AI analysis into file watcher
+
+2. **Complete Language Extractors**
+   - 🔄 Finish Python, Go, Java extractors (currently stubs)
+   - 🔄 Add import resolution for all languages
+   - 🔄 Implement cross-file reference tracking
+
+3. **Semantic Visualization**
+   - 🔄 Add hierarchical layout algorithms
+   - 🔄 Implement semantic edge styling
+   - 🔄 Create node clustering based on semantic relationships
+
+4. **MCP Server Integration**
+   - 🔄 Implement Model Context Protocol server
+   - 🔄 Add graph-based context for AI agents
+   - 🔄 Create semantic search endpoints
+
+### ✅ Completed Milestones
+- **Milestone 1**: Navigable Hierarchy - Live code visualization with basic interactions
 
 ### 🧪 Testing
 - Manual browser testing completed
@@ -115,3 +150,11 @@ None currently - proceeding with graph visualization
 - WebSocket connection establishment
 - WebSocket protocol fix (full_graph message)
 - Tree-sitter language extraction for Rust/TypeScript
+- **Graph rendering fix**: Node ID assignment bug fixed
+- **Performance optimization**: Viewport-based rendering implemented
+- **Search feature**: Real-time node search with highlighting
+- **Filter controls**: Node type filtering (directories, files, functions)
+- **File watching**: Real-time updates with JavaScript extraction working
+- **Milestone 2 - AI Bridge**: Implemented semantic analysis with OpenAI integration
+- **Milestone 2 - AI Providers**: Added OpenAI, Anthropic (stub), and Local providers
+- **Milestone 2 - Budget/Caching**: Added API budget tracking and result caching

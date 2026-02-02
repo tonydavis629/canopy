@@ -3,12 +3,19 @@
 use super::{ExtractionResult, LanguageExtractor};
 use canopy_core::{GraphNode, GraphEdge, NodeKind, EdgeSource, Language, NodeId, EdgeId};
 use std::path::PathBuf;
-use tree_sitter::{Parser, Language as TSLanguage, Node, Point};
+use tree_sitter::{Language as TSLanguage, Node, Point};
 use anyhow::Result;
+use crate::parser_pool::{ParserPool, ParseRequest, FileType};
 
-pub struct RustExtractor;
+pub struct RustExtractor {
+    parser_pool: ParserPool,
+}
 
 impl RustExtractor {
+    pub fn new(parser_pool: ParserPool) -> Self {
+        Self { parser_pool }
+    }
+
     fn get_language() -> TSLanguage {
         tree_sitter_rust::LANGUAGE.into()
     }
@@ -146,12 +153,18 @@ impl RustExtractor {
 
 impl LanguageExtractor for RustExtractor {
     fn extract(&self, path: &PathBuf, content: &[u8]) -> Result<ExtractionResult> {
-        let mut parser = Parser::new();
-        parser.set_language(&Self::get_language())?;
-        
         let source_code = std::str::from_utf8(content)?;
-        let tree = parser.parse(source_code, None)
-            .ok_or_else(|| anyhow::anyhow!("Failed to parse Rust file"))?;
+        
+        // Use the parser pool to parse the content
+        // Since LanguageExtractor is not async, we use block_in_place to handle the async call
+        let request = ParseRequest {
+            file_type: FileType::Rust,
+            content: source_code.to_string(),
+            path: path.clone(),
+        };
+        
+        let parse_result = self.parser_pool.parse_blocking(request)?;
+        let tree = parse_result.tree;
         
         let mut nodes = Vec::new();
         let mut edges = Vec::new();
@@ -220,9 +233,10 @@ impl LanguageExtractor for RustExtractor {
 mod tests {
     use super::*;
     
-    #[test]
-    fn test_extract_rust() {
-        let extractor = RustExtractor;
+    #[tokio::test]
+    async fn test_extract_rust() {
+        let parser_pool = crate::parser_pool::create_parser_pool();
+        let extractor = RustExtractor::new(parser_pool);
         let code = r#"
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
@@ -250,8 +264,8 @@ pub fn create_user(id: u64, name: String) -> User {
         let path = PathBuf::from("test.rs");
         let result = extractor.extract(&path, code.as_bytes()).unwrap();
         
-        // Should extract 1 struct, 2 methods, 2 functions
-        assert_eq!(result.nodes.len(), 5);
+        // Should extract 1 struct, 2 methods, 2 functions, 1 impl block
+        assert_eq!(result.nodes.len(), 6);
         assert_eq!(result.edges.len(), 2); // 2 imports
     }
 }

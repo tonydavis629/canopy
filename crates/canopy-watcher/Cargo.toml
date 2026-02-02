@@ -9,8 +9,13 @@ repository.workspace = true
 notify = { workspace = true }
 ignore = { workspace = true }
 canopy-core = { path = "../canopy-core" }
+canopy-indexer = { path = "../canopy-indexer" }
+tokio = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tree-sitter = { workspace = true }
 
 [dev-dependencies]
 insta = { workspace = true }

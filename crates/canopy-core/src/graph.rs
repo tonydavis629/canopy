@@ -30,7 +30,12 @@ impl Graph {
     /// Add a node to graph. Returns assigned NodeId.
     pub fn add_node(&mut self, node: GraphNode) -> NodeId {
         let idx = self.inner.add_node(node);
-        NodeId(idx.index() as u64)
+        let node_id = NodeId(idx.index() as u64);
+        // Update the node's id field with the assigned ID
+        if let Some(node_ref) = self.inner.node_weight_mut(idx) {
+            node_ref.id = node_id;
+        }
+        node_id
     }
 
     /// Add an edge to graph. Returns assigned EdgeId.
@@ -38,7 +43,12 @@ impl Graph {
         let source = NodeIndex::new(edge.source.0 as usize);
         let target = NodeIndex::new(edge.target.0 as usize);
         let idx = self.inner.add_edge(source, target, edge);
-        EdgeId(idx.index() as u64)
+        let edge_id = EdgeId(idx.index() as u64);
+        // Update the edge's id field with the assigned ID
+        if let Some(edge_ref) = self.inner.edge_weight_mut(idx) {
+            edge_ref.id = edge_id;
+        }
+        edge_id
     }
 
     /// Get a node by ID.
