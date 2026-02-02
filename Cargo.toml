@@ -1,0 +1,87 @@
+[workspace]
+members = [
+    "crates/canopy-core",
+    "crates/canopy-indexer",
+    "crates/canopy-ai",
+    "crates/canopy-server",
+    "crates/canopy-watcher",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/tonydavis629/canopy"
+
+[workspace.dependencies]
+# ── Async runtime ────────────────────────────────────────
+tokio = { version = "1", features = ["full"] }
+
+# ── Web server ───────────────────────────────────────────
+axum = "0.7"
+axum-extra = { version = "0.9", features = ["query"] }
+tokio-tungstenite = "0.24"
+tower-http = { version = "0.6", features = ["cors"] }
+
+# ── Tree-sitter parsing ─────────────────────────────────
+tree-sitter = "0.24"
+tree-sitter-rust = "0.23"
+tree-sitter-typescript = "0.23"
+
+# ── Config file parsing ─────────────────────────────────
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+toml = "0.8"
+dotenvy = "0.15"
+
+# ── Graph data structure ────────────────────────────────
+petgraph = "0.6"
+
+# ── Filesystem watching ─────────────────────────────────
+notify = { version = "6", features = ["macos_fsevent"] }
+ignore = "0.4"
+globset = "0.4"
+
+# ── HTTP client (AI bridge) ─────────────────────────────
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+
+# ── Serialization ───────────────────────────────────────
+bincode = "1"
+
+# ── Syntax highlighting ─────────────────────────────────
+syntect = "5"
+
+# ── Static asset embedding ──────────────────────────────
+rust-embed = "8"
+
+# ── CLI ─────────────────────────────────────────────────
+clap = { version = "4", features = ["derive"] }
+
+# ── Concurrency ─────────────────────────────────────────
+dashmap = "6"
+rayon = "1"
+
+# ── Utilities ───────────────────────────────────────────
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
+thiserror = "2"
+fuzzy-matcher = "0.3"
+open = "5"
+regex = "1"
+mime_guess = "2"
+chrono = "0.4"
+
+# ── Testing (also in workspace deps for inheritance) ────
+insta = { version = "1", features = ["json"] }
+tempfile = "3"
+tokio-test = "0.4"
+criterion = "0.5"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

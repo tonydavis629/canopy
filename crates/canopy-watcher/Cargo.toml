@@ -1,0 +1,17 @@
+[package]
+name = "canopy-watcher"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+notify = { workspace = true }
+ignore = { workspace = true }
+canopy-core = { path = "../canopy-core" }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true }
+tempfile = { workspace = true }

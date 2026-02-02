@@ -1,0 +1,26 @@
+[package]
+name = "canopy-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+axum = { workspace = true }
+axum-extra = { workspace = true }
+tokio-tungstenite = { workspace = true }
+tower-http = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+canopy-core = { path = "../canopy-core" }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+syntect = { workspace = true }
+rust-embed = { workspace = true }
+fuzzy-matcher = { workspace = true }
+mime_guess = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true }
+tokio-test = { workspace = true }
