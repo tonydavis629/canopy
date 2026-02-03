@@ -19,7 +19,8 @@
 
 # TONY's TODOs:
 Back button should take you to a higher hierachy in the visualization.
-The nodes need to be separated in space, and need to be 
+The nodes need to be separated in space, and need to be connected with edges.
+The only entities that are plotted are files. It should be any 
 
 ### ✅ Completed
 1. **Workspace Setup**
