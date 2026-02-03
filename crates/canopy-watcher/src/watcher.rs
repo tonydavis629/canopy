@@ -496,7 +496,7 @@ impl WatcherService {
     async fn perform_ai_analysis(
         &self,
         path: &Path,
-        content: &str,
+        _content: &str,
         added_nodes: &[GraphNode],
     ) -> Result<Vec<GraphEdge>> {
         let Some(ai_provider) = &self.ai_provider else {

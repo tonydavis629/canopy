@@ -50,26 +50,6 @@ async fn run_watcher(root: PathBuf, state: Arc<ServerState>) -> anyhow::Result<(
     Ok(())
 }
 
-pub async fn index(root: PathBuf) -> anyhow::Result<()> {
-    tracing::info!("Indexing repository: {}", root.display());
-    
-    let mut graph = Graph::new();
-    walk_filesystem(&root, &mut graph)?;
-    
-    tracing::info!("Indexed {} nodes, {} edges", graph.node_count(), graph.edge_count());
-    
-    Ok(())
-}
-
-pub fn clear(root: PathBuf) -> anyhow::Result<()> {
-    tracing::info!("Clearing cache for: {}", root.display());
-    
-    canopy_core::clear_cache(&root)?;
-    
-    tracing::info!("Cache cleared");
-    Ok(())
-}
-
 /// Walk filesystem and build basic directory/file structure
 fn walk_filesystem(root: &PathBuf, graph: &mut Graph) -> anyhow::Result<()> {
     use std::fs;

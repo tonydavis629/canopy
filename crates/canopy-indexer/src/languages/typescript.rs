@@ -3,7 +3,7 @@
 use super::{ExtractionResult, LanguageExtractor};
 use canopy_core::{GraphNode, GraphEdge, NodeKind, EdgeSource, Language, NodeId, EdgeId};
 use std::path::PathBuf;
-use tree_sitter::{Language as TSLanguage, Node, Point};
+use tree_sitter::{Node, Point};
 use anyhow::Result;
 use crate::parser_pool::{ParserPool, ParseRequest, FileType};
 
@@ -14,10 +14,6 @@ pub struct TypeScriptExtractor {
 impl TypeScriptExtractor {
     pub fn new(parser_pool: ParserPool) -> Self {
         Self { parser_pool }
-    }
-
-    fn get_language() -> TSLanguage {
-        tree_sitter_typescript::LANGUAGE_TYPESCRIPT.into()
     }
     
     fn point_to_u32(point: Point) -> u32 {
@@ -118,7 +114,6 @@ impl LanguageExtractor for TypeScriptExtractor {
         
         // Walk the AST
         let root_node = tree.root_node();
-        let cursor = root_node.walk();
         
         fn visit_node(
             node: Node,

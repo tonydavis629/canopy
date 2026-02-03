@@ -131,23 +131,6 @@ impl PythonExtractor {
         
         imports
     }
-    
-    fn extract_decorators(&self, node: Node, source: &[u8]) -> Vec<String> {
-        let mut decorators = Vec::new();
-        
-        let mut cursor = node.walk();
-        for child in node.children(&mut cursor) {
-            if child.kind() == "decorator" {
-                if let Some(name_node) = child.child_by_field_name("name") {
-                    if let Ok(name) = name_node.utf8_text(source) {
-                        decorators.push(name.to_string());
-                    }
-                }
-            }
-        }
-        
-        decorators
-    }
 }
 
 impl LanguageExtractor for PythonExtractor {

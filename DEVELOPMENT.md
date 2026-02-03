@@ -18,12 +18,8 @@
 ## Current Status (2026-02-02)
 
 # TONY's TODOs:
-CLI should be just `canopy` which serves the visualization with no config
-The current visualization is broken, too many nodes/edges try to populate at once. it needs to start with a hierarchical, high level view that only shows the highest level modules
-It needs a more modern client
-The visualization does not need to be animated, it should be grid-based. Like a diagram, not like a network.
-It needs integration tests to ensure multiple systems work together. 
-Clean up uncessary files, keep the codebase tidy and cleanly separated.
+Back button should take you to a higher hierachy in the visualization.
+The nodes need to be separated in space, and need to be 
 
 ### ✅ Completed
 1. **Workspace Setup**

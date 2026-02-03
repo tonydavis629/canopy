@@ -1,7 +1,6 @@
 //! Generic fallback extractor
 
 use super::{ExtractionResult, LanguageExtractor};
-use canopy_core::GraphNode;
 use std::path::PathBuf;
 use anyhow::Result;
 use crate::parser_pool::{ParserPool, ParseRequest, FileType};

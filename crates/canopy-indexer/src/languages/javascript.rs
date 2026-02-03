@@ -3,7 +3,7 @@
 use super::{ExtractionResult, LanguageExtractor};
 use canopy_core::{GraphNode, GraphEdge, NodeKind, EdgeSource, Language, NodeId, EdgeId};
 use std::path::PathBuf;
-use tree_sitter::{Language as TSLanguage, Node, Point};
+use tree_sitter::{Node, Point};
 use anyhow::Result;
 use crate::parser_pool::{ParserPool, ParseRequest, FileType};
 
@@ -14,10 +14,6 @@ pub struct JavaScriptExtractor {
 impl JavaScriptExtractor {
     pub fn new(parser_pool: ParserPool) -> Self {
         Self { parser_pool }
-    }
-
-    fn get_language() -> TSLanguage {
-        tree_sitter_javascript::LANGUAGE.into()
     }
     
     fn point_to_u32(point: Point) -> u32 {
