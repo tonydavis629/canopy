@@ -208,6 +208,89 @@
             font-size: 12px;
             color: #9d9d9d;
         }
+        
+        .concept-section {
+            margin-bottom: 24px;
+        }
+        
+        .concept-section h3 {
+            margin: 0 0 10px 0;
+            color: #9d9d9d;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .concepts-grid {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .concept-card {
+            background: #2d2d30;
+            border: 1px solid #3e3e42;
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .concept-card:hover {
+            background: #383838;
+            border-color: #5a5a5a;
+        }
+        
+        .concept-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .concept-name {
+            font-size: 14px;
+            font-weight: 500;
+            flex: 1;
+        }
+        
+        .concept-details {
+            font-size: 12px;
+            color: #9d9d9d;
+        }
+        
+        .concept-relationships {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #3e3e42;
+        }
+        
+        .concept-relationships h4 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #9d9d9d;
+        }
+        
+        .relationship {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+            font-size: 13px;
+        }
+        
+        .relationship span:first-child {
+            color: #0e639c;
+        }
+        
+        .file-section {
+            margin-bottom: 20px;
+        }
+        
+        .file-header {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 10px;
+            color: #d4d4d4;
+        }
     </style>
 </head>
 <body>
@@ -215,6 +298,7 @@
         <div id="title">Canopy</div>
         <input type="text" id="search" placeholder="Search modules...">
         <div id="controls">
+            <button class="button" id="back-button" onclick="goBack()" style="display: none;">← Back</button>
             <button class="button" onclick="viewHierarchical()">Hierarchical View</button>
             <button class="button" onclick="viewFlat()">Flat View</button>
             <span class="status" id="status">Connecting...</span>

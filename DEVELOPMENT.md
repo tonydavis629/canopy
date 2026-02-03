@@ -19,8 +19,14 @@
 
 # TONY's TODOs:
 Back button should take you to a higher hierachy in the visualization.
-The nodes need to be separated in space, and need to be connected with edges.
-The only entities that are plotted are files. It should be any 
+The nodes need to be separated in space, and need to be connected with edges. The visualization is not visualizating any relationships. The point of the project is to make it clearer what the code is doing. Use the AI service to help understand the larger module uses and connections.
+The only entities that are plotted are files. It should be any concept. All classes, functions, etc should have their own node.
+
+Zoom should be implemented with scroll wheel, taking you deeper into specifics or higher in the 'canopy' (more general modules)
+The pathing description at the top has a bug: Root/ sample-rust-project / src / main.rs / Cargo.toml / Cargo.toml / Cargo.toml / src / lib.rs / Cargo.toml. It is only additive.
+- Comprehensive test suite (unit, integration, snapshot, browser)
+
+
 
 ### ✅ Completed
 1. **Workspace Setup**
@@ -87,12 +93,6 @@ The only entities that are plotted are files. It should be any
    - 🔄 Implement semantic coloring and edge styling
    - 🔄 Add node clustering and aggregation views
    - 🔄 Create semantic zoom (show/hide details based on zoom level)
-
-4. **AI Agent Integration**
-   - 🔄 Add MCP (Model Context Protocol) server support
-   - 🔄 Implement code-aware prompts and context injection
-   - 🔄 Add graph-based code navigation for AI agents
-   - 🔄 Create semantic search with natural language queries
 
 ### 📋 Next Steps (Milestone 2)
 1. **AI Bridge Implementation** ✅ Core Complete

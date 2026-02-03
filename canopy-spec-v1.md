@@ -2619,6 +2619,8 @@ The open source core covers single-repo, single-user, local usage. Enterprise ex
 - `.env` → code environment variable linking (first config-to-code demo)
 - Editor integration (VS Code URI protocol)
 - `.canopy/cache.bincode` for fast restarts
+- Comprehensive test suite (unit, integration, snapshot, browser)
+
 
 **Not in M1:** Cross-file resolution, AI bridge, search, layers, most config parsers, most languages.
 
@@ -2650,7 +2652,10 @@ The open source core covers single-repo, single-user, local usage. Enterprise ex
 - Keyboard shortcuts
 - Performance optimization: profile and fix any layout/rendering bottlenecks
 - Syntax-highlighted code panel (syntect)
-- Comprehensive test suite (unit, integration, snapshot, browser)
+- Add MCP (Model Context Protocol) server support
+- Implement code-aware prompts and context injection
+- Add graph-based code navigation for AI agents
+- Create semantic search with natural language queries
 
 ### M4 — Community Release (2–3 weeks)
 

@@ -22,6 +22,10 @@ function initGridView() {
     filters.forEach(filter => {
         document.getElementById(`filter-${filter}`).addEventListener('change', updateView);
     });
+    
+    // Set up zoom with mouse wheel
+    const mainContainer = document.getElementById('main');
+    mainContainer.addEventListener('wheel', handleZoom, { passive: false });
 }
 
 // Connect to WebSocket
@@ -56,7 +60,7 @@ function connectWebSocket() {
     };
 }
 
-// Render hierarchical view (top-level modules only)
+// Render hierarchical view (top-level modules and their concepts)
 function renderHierarchicalView() {
     if (!currentGraph) return;
     
@@ -64,21 +68,53 @@ function renderHierarchicalView() {
     grid.innerHTML = '';
     grid.className = '';
     
-    // Get top-level modules (directories and root files)
-    const topLevelNodes = currentGraph.nodes.filter(node => {
+    // Get top-level modules
+    const topLevelModules = currentGraph.nodes.filter(node => {
         const pathParts = node.file_path.split('/');
-        return pathParts.length <= 2; // Root level only
+        return pathParts.length <= 2 && ['Directory', 'File'].includes(node.kind);
     });
     
-    // Group by type
-    const directories = topLevelNodes.filter(n => n.kind === 'Directory');
-    const files = topLevelNodes.filter(n => n.kind === 'File');
-    const modules = [...directories, ...files];
-    
-    // Create module cards
-    modules.forEach(module => {
-        const card = createModuleCard(module);
-        grid.appendChild(card);
+    // For each top-level module, show its concepts
+    topLevelModules.forEach(module => {
+        const concepts = getModuleConcepts(module);
+        
+        if (concepts.length === 0) {
+            // Just show the module card if no concepts
+            const card = createModuleCard(module);
+            grid.appendChild(card);
+        } else {
+            // Show module with its concepts
+            const moduleSection = document.createElement('div');
+            moduleSection.className = 'module-section';
+            moduleSection.style.marginBottom = '24px';
+            
+            // Module header
+            const header = document.createElement('div');
+            header.className = 'module-header';
+            header.innerHTML = `
+                <span class="module-icon">${getModuleIcon(module.kind)}</span>
+                <span class="module-name" style="font-size: 18px; font-weight: 500;">${module.name}</span>
+                <span style="color: #9d9d9d; margin-left: 8px;">(${concepts.length} concepts)</span>
+            `;
+            moduleSection.appendChild(header);
+            
+            // Concepts grid
+            const conceptsGrid = document.createElement('div');
+            conceptsGrid.className = 'concepts-grid';
+            conceptsGrid.style.display = 'grid';
+            conceptsGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
+            conceptsGrid.style.gap = '12px';
+            conceptsGrid.style.marginTop = '12px';
+            conceptsGrid.style.marginLeft = '24px';
+            
+            concepts.forEach(concept => {
+                const card = createConceptCardWithRelationships(concept, concepts);
+                conceptsGrid.appendChild(card);
+            });
+            
+            moduleSection.appendChild(conceptsGrid);
+            grid.appendChild(moduleSection);
+        }
     });
     
     // Show breadcrumb
@@ -163,25 +199,37 @@ function selectModule(module) {
 
 // Drill down into a module
 function drillDown(module) {
-    currentPath.push(module.name);
+    // Build proper path for the module
+    let modulePath;
+    if (module.kind === 'Directory') {
+        modulePath = module.file_path;
+    } else {
+        // For files, use the directory path
+        const parts = module.file_path.split('/');
+        parts.pop(); // Remove filename
+        modulePath = parts.join('/');
+    }
     
-    // Get children of this module
-    const children = currentGraph.nodes.filter(node => {
-        if (module.kind === 'Directory') {
-            return node.file_path.startsWith(module.file_path + '/') &&
-                   node.file_path !== module.file_path;
-        } else {
-            // For files, show contained items
-            return node.file_path === module.file_path &&
-                   node.kind !== 'File' && node.kind !== 'Directory';
-        }
-    });
+    // Only add to path if it's a new level
+    if (modulePath !== getCurrentPathString()) {
+        currentPath.push({
+            name: module.name,
+            path: modulePath,
+            kind: module.kind
+        });
+    }
     
-    // Group children by level
-    const groupedChildren = groupByLevel(children, module);
+    // Show back button when not at root
+    const backButton = document.getElementById('back-button');
+    if (currentPath.length > 0) {
+        backButton.style.display = 'inline-block';
+    }
     
-    // Render children
-    renderChildren(groupedChildren);
+    // Get ALL concepts (not just files) that belong to this module
+    const moduleConcepts = getModuleConcepts(module);
+    
+    // Render concepts with their relationships
+    renderConceptsWithRelationships(moduleConcepts, module);
     showBreadcrumb(currentPath);
 }
 
@@ -218,20 +266,258 @@ function renderChildren(levels) {
     });
 }
 
-// Show breadcrumb navigation
+// Show breadcrumb navigation with proper path
 function showBreadcrumb(path) {
     const breadcrumb = document.getElementById('breadcrumb');
     const currentPathSpan = document.getElementById('current-path');
     
+    if (path.length === 0) {
+        breadcrumb.style.display = 'none';
+        return;
+    }
+    
     breadcrumb.style.display = 'flex';
-    currentPathSpan.textContent = path.join(' / ');
+    
+    // Build clean path
+    const pathParts = path.map(p => p.name);
+    currentPathSpan.textContent = pathParts.join(' / ');
+}
+
+// Render concepts with their relationships
+function renderConceptsWithRelationships(concepts, parentModule) {
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    
+    // Create a relationship graph container
+    const graphContainer = document.createElement('div');
+    graphContainer.className = 'concept-graph';
+    graphContainer.style.display = 'flex';
+    graphContainer.style.flexDirection = 'column';
+    graphContainer.style.gap = '20px';
+    
+    // Group concepts by type
+    const byType = {};
+    concepts.forEach(concept => {
+        if (!byType[concept.kind]) byType[concept.kind] = [];
+        byType[concept.kind].push(concept);
+    });
+    
+    // Render each type group
+    Object.entries(byType).forEach(([kind, nodes]) => {
+        const typeSection = document.createElement('div');
+        typeSection.className = 'concept-section';
+        
+        // Section header
+        const header = document.createElement('h3');
+        header.textContent = `${kind}s`;
+        header.style.marginBottom = '10px';
+        header.style.color = '#9d9d9d';
+        typeSection.appendChild(header);
+        
+        // Concept cards with relationships
+        const cardsContainer = document.createElement('div');
+        cardsContainer.className = 'concept-cards';
+        cardsContainer.style.display = 'grid';
+        cardsContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(300px, 1fr))';
+        cardsContainer.style.gap = '16px';
+        
+        nodes.forEach(node => {
+            const card = createConceptCardWithRelationships(node, concepts);
+            cardsContainer.appendChild(card);
+        });
+        
+        typeSection.appendChild(cardsContainer);
+        graphContainer.appendChild(typeSection);
+    });
+    
+    grid.appendChild(graphContainer);
+}
+
+// Create a concept card with its relationships
+function createConceptCardWithRelationships(concept, allConcepts) {
+    const card = document.createElement('div');
+    card.className = 'concept-card';
+    card.style.background = '#2d2d30';
+    card.style.border = '1px solid #3e3e42';
+    card.style.borderRadius = '8px';
+    card.style.padding = '16px';
+    card.style.position = 'relative';
+    
+    // Get relationships for this concept
+    const relationships = getConceptRelationships(concept, allConcepts);
+    
+    card.innerHTML = `
+        <div class="concept-header">
+            <span class="concept-icon">${getModuleIcon(concept.kind)}</span>
+            <span class="concept-name">${concept.name}</span>
+        </div>
+        <div class="concept-details">
+            <div class="detail-row">
+                <span class="detail-icon">📍</span>
+                <span>${concept.file_path}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-icon">📏</span>
+                <span>Lines ${concept.line_start || 0}-${concept.line_end || 0}</span>
+            </div>
+        </div>
+        ${relationships.length > 0 ? `
+        <div class="concept-relationships" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #3e3e42;">
+            <h4 style="margin: 0 0 8px 0; font-size: 14px; color: #9d9d9d;">Relationships</h4>
+            ${relationships.map(rel => `
+                <div class="relationship" style="display: flex; align-items: center; gap: 8px; margin: 4px 0; font-size: 13px;">
+                    <span style="color: #0e639c;">${rel.relationship}</span>
+                    <span>→</span>
+                    <span>${rel.target.name}</span>
+                </div>
+            `).join('')}
+        </div>
+        ` : ''}
+    `;
+    
+    return card;
+}
+
+// Get relationships for a concept
+function getConceptRelationships(concept, allConcepts) {
+    if (!currentGraph || !currentGraph.edges) return [];
+    
+    const relationships = [];
+    
+    currentGraph.edges.forEach(edge => {
+        if (edge.source === concept.id) {
+            const target = allConcepts.find(c => c.id === edge.target);
+            if (target) {
+                relationships.push({
+                    relationship: getRelationshipName(edge.kind),
+                    target: target
+                });
+            }
+        } else if (edge.target === concept.id) {
+            const source = allConcepts.find(c => c.id === edge.source);
+            if (source) {
+                relationships.push({
+                    relationship: getRelationshipName(edge.kind) + " (from)",
+                    target: source
+                });
+            }
+        }
+    });
+    
+    return relationships;
+}
+
+// Get human-readable relationship name
+function getRelationshipName(kind) {
+    const names = {
+        'Contains': 'contains',
+        'Calls': 'calls',
+        'DependsOn': 'depends on',
+        'Uses': 'uses',
+        'Imports': 'imports',
+        'Implements': 'implements',
+        'Inherits': 'inherits from',
+        'SemanticReference': 'references'
+    };
+    
+    return names[kind] || kind;
 }
 
 // Navigate to root
 function navigateToRoot() {
     currentPath = [];
     selectedModule = null;
+    document.getElementById('back-button').style.display = 'none';
     renderHierarchicalView();
+}
+
+// Go back to parent level
+function goBack() {
+    if (currentPath.length === 0) return;
+    
+    currentPath.pop();
+    
+    // Hide back button if at root
+    if (currentPath.length === 0) {
+        document.getElementById('back-button').style.display = 'none';
+        renderHierarchicalView();
+    } else {
+        // Go back to parent level
+        const parentPath = currentPath[currentPath.length - 1];
+        const parentModule = findModuleByPath(parentPath.path);
+        if (parentModule) {
+            drillDown(parentModule);
+        } else {
+            navigateToRoot();
+        }
+    }
+}
+
+// Get current path as string
+function getCurrentPathString() {
+    if (currentPath.length === 0) return '';
+    return currentPath[currentPath.length - 1].path;
+}
+
+// Get ALL concepts (functions, classes, etc.) that belong to this module
+function getModuleConcepts(module) {
+    if (!currentGraph) return [];
+    
+    // Get the directory path for this module
+    let moduleDir;
+    if (module.kind === 'Directory') {
+        moduleDir = module.file_path;
+    } else {
+        // For files, get the directory
+        const parts = module.file_path.split('/');
+        parts.pop();
+        moduleDir = parts.join('/');
+    }
+    
+    // Get all concepts in this directory
+    const concepts = currentGraph.nodes.filter(node => {
+        // Include the module itself
+        if (node.id === module.id) return true;
+        
+        // Include concepts in the same directory
+        const nodeDir = node.file_path.substring(0, node.file_path.lastIndexOf('/'));
+        return nodeDir === moduleDir && 
+               !['File', 'Directory'].includes(node.kind);
+    });
+    
+    return concepts;
+}
+
+// Find module by path
+function findModuleByPath(path) {
+    if (!path) return null;
+    
+    // Find the module that matches this path
+    return currentGraph.nodes.find(node => {
+        if (node.kind === 'Directory') {
+            return node.file_path === path || node.file_path.endsWith('/' + path);
+        } else if (node.kind === 'File') {
+            return node.file_path === path;
+        }
+        return false;
+    });
+}
+
+// Show breadcrumb with proper path
+function showBreadcrumb(path) {
+    const breadcrumb = document.getElementById('breadcrumb');
+    const currentPathSpan = document.getElementById('current-path');
+    
+    if (path.length === 0) {
+        breadcrumb.style.display = 'none';
+        return;
+    }
+    
+    breadcrumb.style.display = 'flex';
+    
+    // Build clean path
+    const pathParts = path.map(p => p.name);
+    currentPathSpan.textContent = pathParts.join(' / ');
 }
 
 // View controls
@@ -250,20 +536,59 @@ function viewFlat() {
     renderFlatView();
 }
 
-// Render flat view (all nodes)
+// Render flat view (all concepts)
 function renderFlatView() {
     if (!currentGraph) return;
     
     const grid = document.getElementById('grid');
     grid.innerHTML = '';
     
-    // Apply filters
-    const filteredNodes = filterNodes(currentGraph.nodes);
+    // Get all concepts (not just files/directories)
+    const allConcepts = currentGraph.nodes.filter(node => 
+        !['File', 'Directory'].includes(node.kind)
+    );
     
-    // Create cards for all nodes
-    filteredNodes.forEach(node => {
-        const card = createModuleCard(node);
-        grid.appendChild(card);
+    // Apply filters
+    const filteredConcepts = filterNodes(allConcepts);
+    
+    // Group by file for organization
+    const byFile = {};
+    filteredConcepts.forEach(concept => {
+        const file = concept.file_path;
+        if (!byFile[file]) byFile[file] = [];
+        byFile[file].push(concept);
+    });
+    
+    // Render concepts grouped by file
+    Object.entries(byFile).forEach(([file, concepts]) => {
+        const fileSection = document.createElement('div');
+        fileSection.className = 'file-section';
+        fileSection.style.marginBottom = '20px';
+        
+        // File header
+        const header = document.createElement('div');
+        header.className = 'file-header';
+        header.style.fontSize = '16px';
+        header.style.fontWeight = '500';
+        header.style.marginBottom = '10px';
+        header.style.color = '#d4d4d4';
+        header.textContent = file;
+        fileSection.appendChild(header);
+        
+        // Concepts grid
+        const conceptsGrid = document.createElement('div');
+        conceptsGrid.className = 'concepts-grid';
+        conceptsGrid.style.display = 'grid';
+        conceptsGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(250px, 1fr))';
+        conceptsGrid.style.gap = '12px';
+        
+        concepts.forEach(concept => {
+            const card = createConceptCardWithRelationships(concept, concepts);
+            conceptsGrid.appendChild(card);
+        });
+        
+        fileSection.appendChild(conceptsGrid);
+        grid.appendChild(fileSection);
     });
 }
 
@@ -303,6 +628,28 @@ function handleSearch(event) {
             card.style.display = 'none';
         }
     });
+}
+
+// Handle zoom with mouse wheel
+function handleZoom(event) {
+    event.preventDefault();
+    
+    const delta = event.deltaY;
+    const zoomThreshold = 50; // Minimum scroll to trigger zoom
+    
+    if (Math.abs(delta) < zoomThreshold) return;
+    
+    if (delta > 0) {
+        // Scroll down - zoom out (go higher in hierarchy)
+        if (currentPath.length > 0) {
+            goBack();
+        }
+    } else {
+        // Scroll up - zoom in (if a module is selected)
+        if (selectedModule) {
+            drillDown(selectedModule);
+        }
+    }
 }
 
 // Update view when filters change
