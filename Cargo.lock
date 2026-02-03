@@ -358,6 +358,7 @@ name = "canopy-watcher"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "canopy-ai",
  "canopy-core",
  "canopy-indexer",
  "ignore",

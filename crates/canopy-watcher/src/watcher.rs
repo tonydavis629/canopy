@@ -1,9 +1,10 @@
 //! Filesystem watcher implementation
 
 use anyhow::Result;
-use canopy_core::{Graph, GraphDiff, NodeId, EdgeId};
+use canopy_core::{Graph, GraphDiff, NodeId, EdgeId, GraphNode, GraphEdge, EdgeSource};
 use canopy_core::diff::DiffEngine;
 use canopy_indexer::ExtractionResult;
+use canopy_ai::bridge::{AIProvider, SemanticAnalysisRequest, AnalysisContext, SemanticRelationship};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::{HashSet, HashMap};
 use std::path::{Path, PathBuf};
@@ -151,6 +152,8 @@ pub struct WatcherService {
     /// Track which nodes belong to which file for incremental updates
     file_to_nodes: Arc<RwLock<HashMap<PathBuf, Vec<NodeId>>>>,
     file_to_edges: Arc<RwLock<HashMap<PathBuf, Vec<EdgeId>>>>,
+    /// AI provider for semantic analysis
+    ai_provider: Option<Arc<dyn AIProvider>>,
 }
 
 impl WatcherService {
@@ -165,6 +168,7 @@ impl WatcherService {
             diff_engine,
             file_to_nodes: Arc::new(RwLock::new(HashMap::new())),
             file_to_edges: Arc::new(RwLock::new(HashMap::new())),
+            ai_provider: None,
         })
     }
 
@@ -183,7 +187,14 @@ impl WatcherService {
             diff_engine,
             file_to_nodes: Arc::new(RwLock::new(HashMap::new())),
             file_to_edges: Arc::new(RwLock::new(HashMap::new())),
+            ai_provider: None,
         })
+    }
+
+    /// Set the AI provider for semantic analysis
+    pub fn with_ai_provider(mut self, provider: Arc<dyn AIProvider>) -> Self {
+        self.ai_provider = Some(provider);
+        self
     }
 
     /// Start watching the project directory
@@ -266,7 +277,39 @@ impl WatcherService {
         };
 
         // Update the graph incrementally
-        let graph_diff = self.update_graph_incrementally(path, extraction_result, old_nodes, old_edges).await?;
+        let graph_diff = self.update_graph_incrementally(path, extraction_result.clone(), old_nodes, old_edges).await?;
+
+        // Perform AI semantic analysis on newly added nodes
+        if self.ai_provider.is_some() && !extraction_result.nodes.is_empty() {
+            match self.perform_ai_analysis(path, &content, &graph_diff.added_nodes).await {
+                Ok(ai_edges) => {
+                    if !ai_edges.is_empty() {
+                        // Add AI-inferred edges to the graph
+                        let mut graph = self.graph.write().await;
+                        let mut new_edge_ids = Vec::new();
+                        for mut edge in ai_edges {
+                            let edge_id = graph.add_edge(edge.clone());
+                            edge.id = edge_id;
+                            new_edge_ids.push(edge_id);
+                        }
+                        drop(graph);
+
+                        // Update file_to_edges tracking
+                        {
+                            let mut file_to_edges = self.file_to_edges.write().await;
+                            if let Some(edges) = file_to_edges.get_mut(path) {
+                                edges.extend(new_edge_ids.clone());
+                            }
+                        }
+
+                        info!("Added {} AI-inferred edges for {:?}", new_edge_ids.len(), path);
+                    }
+                }
+                Err(e) => {
+                    warn!("AI analysis failed for {:?}: {}", path, e);
+                }
+            }
+        }
 
         // Broadcast the graph diff to WebSocket clients
         if let Some(ref diff_tx) = self.diff_tx {
@@ -447,6 +490,88 @@ impl WatcherService {
     pub async fn sequence(&self) -> u64 {
         let diff_engine = self.diff_engine.read().await;
         diff_engine.sequence()
+    }
+
+    /// Perform AI semantic analysis on newly added nodes
+    async fn perform_ai_analysis(
+        &self,
+        path: &Path,
+        content: &str,
+        added_nodes: &[GraphNode],
+    ) -> Result<Vec<GraphEdge>> {
+        let Some(ai_provider) = &self.ai_provider else {
+            return Ok(Vec::new());
+        };
+
+        if added_nodes.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        info!("Performing AI semantic analysis on {} nodes from {:?}", added_nodes.len(), path);
+
+        let mut ai_edges = Vec::new();
+
+        // Get all nodes in the graph as candidates for relationships
+        let candidate_nodes = {
+            let graph = self.graph.read().await;
+            graph.all_nodes().cloned().collect::<Vec<_>>()
+        };
+
+        // Analyze each function/method node
+        for source_node in added_nodes.iter().filter(|n| {
+            matches!(n.kind, canopy_core::NodeKind::Function | canopy_core::NodeKind::Method)
+        }) {
+            // Build context for the analysis
+            let context = AnalysisContext {
+                file_path: path.to_path_buf(),
+                language: format!("{:?}", source_node.language.unwrap_or(canopy_core::Language::Other)),
+                enclosing_context: Vec::new(),
+                imports: Vec::new(),
+                project_context: HashMap::new(),
+            };
+
+            // Create analysis request
+            let request = SemanticAnalysisRequest {
+                source_node: source_node.clone(),
+                candidate_nodes: candidate_nodes.clone(),
+                context,
+                relationship_types: vec![
+                    SemanticRelationship::Calls,
+                    SemanticRelationship::DependsOn,
+                    SemanticRelationship::Uses,
+                ],
+            };
+
+            // Call AI provider
+            match ai_provider.analyze_semantic_relationships(request).await {
+                Ok(result) => {
+                    info!("AI analysis found {} relationships for {}", result.relationships.len(), source_node.name);
+                    
+                    for rel in result.relationships {
+                        // Only accept high-confidence relationships
+                        if rel.confidence >= 0.7 {
+                            ai_edges.push(GraphEdge {
+                                id: EdgeId(0), // Will be set by graph
+                                source: rel.source_id,
+                                target: rel.target_id,
+                                kind: rel.relationship.into(),
+                                edge_source: EdgeSource::AI,
+                                confidence: rel.confidence,
+                                label: Some(rel.explanation),
+                                file_path: Some(path.to_path_buf()),
+                                line: rel.line_reference,
+                            });
+                        }
+                    }
+                }
+                Err(e) => {
+                    warn!("AI analysis failed for {}: {}", source_node.name, e);
+                }
+            }
+        }
+
+        info!("AI analysis complete: {} semantic edges inferred", ai_edges.len());
+        Ok(ai_edges)
     }
 }
 

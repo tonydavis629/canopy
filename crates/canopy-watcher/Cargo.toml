@@ -10,6 +10,7 @@ notify = { workspace = true }
 ignore = { workspace = true }
 canopy-core = { path = "../canopy-core" }
 canopy-indexer = { path = "../canopy-indexer" }
+canopy-ai = { path = "../canopy-ai" }
 tokio = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
