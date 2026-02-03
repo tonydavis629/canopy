@@ -13,46 +13,50 @@ pub struct AnthropicProvider {
 
 impl AnthropicProvider {
     pub fn new(api_key: Option<String>) -> Self {
+        // Use OpenRouter API key from .env file for consistency
+        let api_key = api_key.or_else(|| std::env::var("OPENROUTER_API_KEY").ok())
+            .or_else(|| std::env::var("openrouter_api_key").ok())
+            .unwrap_or_default();
+        
         Self {
             client: reqwest::Client::new(),
-            api_key: api_key.unwrap_or_else(|| std::env::var("ANTHROPIC_API_KEY").unwrap_or_default()),
-            model: "claude-3-haiku-20240307".to_string(),
+            api_key,
+            model: "anthropic/claude-3-haiku-20240307".to_string(), // OpenRouter format
         }
     }
 }
 
 #[derive(Debug, Serialize)]
-struct AnthropicRequest {
+struct OpenAIRequest {
     model: String,
+    messages: Vec<OpenAIMessage>,
+    temperature: f32,
     max_tokens: u32,
-    messages: Vec<AnthropicMessage>,
-    system: String,
 }
 
-#[derive(Debug, Serialize)]
-struct AnthropicMessage {
+#[derive(Debug, Serialize, Deserialize)]
+struct OpenAIMessage {
     role: String,
     content: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct AnthropicResponse {
-    content: Vec<AnthropicContent>,
-    usage: AnthropicUsage,
+struct OpenAIResponse {
+    choices: Vec<OpenAIChoice>,
+    usage: Option<OpenAIUsage>,
 }
 
 #[derive(Debug, Deserialize)]
-struct AnthropicContent {
-    text: String,
-    #[serde(rename = "type")]
-    content_type: String,
+struct OpenAIChoice {
+    message: OpenAIMessage,
 }
 
 #[derive(Debug, Deserialize)]
-struct AnthropicUsage {
-    input_tokens: u32,
-    output_tokens: u32,
+struct OpenAIUsage {
+    total_tokens: u32,
 }
+
+// Using OpenAI-compatible format for OpenRouter
 
 #[derive(Debug, Serialize, Deserialize)]
 struct SemanticAnalysisResponse {
@@ -127,38 +131,42 @@ Respond with a JSON object in this exact format:
             request.source_node.id.0
         );
 
-        let anthropic_request = AnthropicRequest {
+        // Convert to OpenAI-compatible format for OpenRouter
+        let openai_request = OpenAIRequest {
             model: self.model.clone(),
-            max_tokens: 2000,
             messages: vec![
-                AnthropicMessage {
+                OpenAIMessage {
+                    role: "system".to_string(),
+                    content: "You are a code analysis expert. Respond only with valid JSON.".to_string(),
+                },
+                OpenAIMessage {
                     role: "user".to_string(),
                     content: prompt,
                 }
             ],
-            system: "You are a code analysis expert. Respond only with valid JSON.".to_string(),
+            temperature: 0.1,
+            max_tokens: 2000,
         };
 
         let response = self.client
-            .post("https://api.anthropic.com/v1/messages")
-            .header("x-api-key", &self.api_key)
-            .header("content-type", "application/json")
-            .header("anthropic-version", "2023-06-01")
-            .json(&anthropic_request)
+            .post("https://openrouter.ai/api/v1/chat/completions")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("HTTP-Referer", "https://github.com/openclaw/openclaw")
+            .header("X-Title", "Canopy")
+            .json(&openai_request)
             .send()
             .await
-            .context("Failed to send request to Anthropic API")?;
+            .context("Failed to send request to OpenRouter")?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("Anthropic API error: {}", error_text);
+            anyhow::bail!("OpenRouter API error: {}", error_text);
         }
 
-        let anthropic_response: AnthropicResponse = response.json().await.context("Failed to parse Anthropic response")?;
+        let openai_response: OpenAIResponse = response.json().await.context("Failed to parse OpenRouter response")?;
         
-        let content = &anthropic_response.content.first()
-            .context("No content in Anthropic response")?
-            .text;
+        let content = &openai_response.choices[0].message.content;
 
         // Parse the JSON response
         let analysis_response: SemanticAnalysisResponse = serde_json::from_str(content)
@@ -188,7 +196,7 @@ Respond with a JSON object in this exact format:
         Ok(SemanticAnalysisResult {
             relationships,
             explanation: analysis_response.explanation,
-            tokens_used: anthropic_response.usage.input_tokens + anthropic_response.usage.output_tokens,
+            tokens_used: openai_response.usage.map(|u| u.total_tokens).unwrap_or(0),
         })
     }
     
@@ -215,39 +223,41 @@ Provide a brief summary (1-2 sentences) explaining what this code does and its p
             node.language
         );
 
-        let anthropic_request = AnthropicRequest {
+        let openai_request = OpenAIRequest {
             model: self.model.clone(),
-            max_tokens: 150,
             messages: vec![
-                AnthropicMessage {
+                OpenAIMessage {
+                    role: "system".to_string(),
+                    content: "You are a code documentation expert. Provide concise, clear summaries.".to_string(),
+                },
+                OpenAIMessage {
                     role: "user".to_string(),
                     content: prompt,
                 }
             ],
-            system: "You are a code documentation expert. Provide concise, clear summaries.".to_string(),
+            temperature: 0.3,
+            max_tokens: 150,
         };
 
         let response = self.client
-            .post("https://api.anthropic.com/v1/messages")
-            .header("x-api-key", &self.api_key)
-            .header("content-type", "application/json")
-            .header("anthropic-version", "2023-06-01")
-            .json(&anthropic_request)
+            .post("https://openrouter.ai/api/v1/chat/completions")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("HTTP-Referer", "https://github.com/openclaw/openclaw")
+            .header("X-Title", "Canopy")
+            .json(&openai_request)
             .send()
             .await
-            .context("Failed to send request to Anthropic API")?;
+            .context("Failed to send request to OpenRouter")?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            anyhow::bail!("Anthropic API error: {}", error_text);
+            anyhow::bail!("OpenRouter API error: {}", error_text);
         }
 
-        let anthropic_response: AnthropicResponse = response.json().await.context("Failed to parse Anthropic response")?;
+        let openai_response: OpenAIResponse = response.json().await.context("Failed to parse OpenRouter response")?;
         
-        let summary = anthropic_response.content.first()
-            .context("No content in Anthropic response")?
-            .text.trim()
-            .to_string();
+        let summary = openai_response.choices[0].message.content.trim().to_string();
 
         Ok(summary)
     }
@@ -293,44 +303,46 @@ Provide a clear, concise answer based on the provided code context. If the infor
             edges_info
         );
 
-        let anthropic_request = AnthropicRequest {
+        let openai_request = OpenAIRequest {
             model: self.model.clone(),
-            max_tokens: 1000,
             messages: vec![
-                AnthropicMessage {
+                OpenAIMessage {
+                    role: "system".to_string(),
+                    content: "You are a helpful code analysis assistant. Answer questions clearly and concisely.".to_string(),
+                },
+                OpenAIMessage {
                     role: "user".to_string(),
                     content: prompt,
                 }
             ],
-            system: "You are a helpful code analysis assistant. Answer questions clearly and concisely.".to_string(),
+            temperature: 0.2,
+            max_tokens: 1000,
         };
 
         let response = self.client
-            .post("https://api.anthropic.com/v1/messages")
-            .header("x-api-key", &self.api_key)
-            .header("content-type", "application/json")
-            .header("anthropic-version", "2023-06-01")
-            .json(&anthropic_request)
+            .post("https://openrouter.ai/api/v1/chat/completions")
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("HTTP-Referer", "https://github.com/openclaw/openclaw")
+            .header("X-Title", "Canopy")
+            .json(&openai_request)
             .send()
             .await
-            .context("Failed to send request to Anthropic API")?;
+            .context("Failed to send request to OpenRouter")?;
 
         if !response.status().is_success() {
             let error_text = response.text().await.unwrap_or_default();
             anyhow::bail!("Anthropic API error: {}", error_text);
         }
 
-        let anthropic_response: AnthropicResponse = response.json().await.context("Failed to parse Anthropic response")?;
+        let openai_response: OpenAIResponse = response.json().await.context("Failed to parse OpenRouter response")?;
         
-        let answer = anthropic_response.content.first()
-            .context("No content in Anthropic response")?
-            .text.trim()
-            .to_string();
+        let answer = openai_response.choices[0].message.content.trim().to_string();
 
         Ok(answer)
     }
     
     fn name(&self) -> &str {
-        "Anthropic"
+        "Anthropic (via OpenRouter)"
     }
 }
