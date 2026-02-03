@@ -262,7 +262,9 @@ dependencies = [
  "canopy-server",
  "canopy-watcher",
  "clap",
+ "tempfile",
  "tokio",
+ "tokio-test",
  "tracing",
  "tracing-subscriber",
 ]

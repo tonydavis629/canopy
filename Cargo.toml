@@ -112,8 +112,16 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
 
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio-test = { workspace = true }
+
 [profile.release]
 opt-level = 3
 lto = true
 codegen-units = 1
 strip = true
+
+[[test]]
+name = "integration"
+path = "tests/integration/main.rs"

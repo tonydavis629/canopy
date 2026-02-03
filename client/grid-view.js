@@ -353,3 +353,11 @@ function applyDiff(diff) {
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', initGridView);
+
+// Export for use in other scripts
+window.GridView = {
+    renderHierarchicalView,
+    renderFlatView,
+    selectModule,
+    navigateToRoot
+};
