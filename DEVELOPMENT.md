@@ -17,6 +17,9 @@
 
 ## Current Status (2026-02-02)
 
+# TONY's TODOs:
+CLI should be just canopy which indexes, or pulls 
+
 ### ✅ Completed
 1. **Workspace Setup**
    - All 5 crates compile successfully
