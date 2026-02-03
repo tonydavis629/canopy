@@ -16,7 +16,7 @@ async fn test_cli_invocation() {
         .expect("Failed to execute command");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Canopy"));
+    assert!(stdout.contains("canopy"));
     assert!(stdout.contains("Live hierarchical code architecture visualization"));
 }
 
@@ -70,7 +70,7 @@ fn test_language_extractors() {
         ("test.java", true), // Java
         ("test.c", true),    // C
         ("test.cpp", true),  // C++
-        ("test.txt", false), // Unsupported
+        ("test.txt", true),  // Generic fallback extractor
     ];
     
     for (filename, should_have_extractor) in test_cases {
