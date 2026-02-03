@@ -9,6 +9,9 @@ pub mod workspace;
 pub mod cache;
 
 #[cfg(test)]
+pub mod tests;
+
+#[cfg(test)]
 pub mod test_utils;
 
 pub use model::{NodeId, EdgeId, NodeKind, Language, EdgeKind, EdgeSource, GraphNode, GraphEdge, AggregatedEdge};

@@ -10,6 +10,9 @@ pub mod providers;
 pub mod cache;
 pub mod budget;
 
+#[cfg(test)]
+pub mod tests;
+
 pub use bridge::*;
 pub use budget::Budget;
 pub use cache::AnalysisCache;
