@@ -3,350 +3,492 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canopy - Code Visualization</title>
+    <title>Canopy - Code Graph</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
+        :root {
+            color-scheme: dark;
+            --bg-0: #0b0d12;
+            --bg-1: #121622;
+            --bg-2: #1b2030;
+            --panel: rgba(22, 26, 38, 0.92);
+            --panel-strong: rgba(26, 32, 48, 0.98);
+            --border: rgba(120, 130, 160, 0.18);
+            --text: #e9edf5;
+            --muted: #9aa4b7;
+            --accent: #5bd6ff;
+            --accent-strong: #00a2ff;
+            --accent-warm: #f7b267;
+            --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+            --node-workspace: #263750;
+            --node-package: #2f4a66;
+            --node-module: #2f4f6d;
+            --node-directory: #2a3550;
+            --node-file: #253a2f;
+            --node-class: #3b2f52;
+            --node-struct: #4c2f3b;
+            --node-enum: #4b3f2a;
+            --node-interface: #2f4f4c;
+            --node-function: #2f3f5c;
+            --node-method: #2f3f4f;
+            --node-constant: #4c4a2f;
+            --node-typealias: #3d2f4f;
+            --node-configblock: #402f2f;
+            --node-configkey: #4a2f2f;
+            --node-envvariable: #3d4a2f;
+            --node-route: #2f4a3f;
+            --node-migration: #4a3f2f;
+            --node-cijob: #2f4a4a;
+            --node-dockerservice: #2f3a4a;
+            --node-unknown: #363a45;
+            --edge-contains: #3d4b66;
+            --edge-syntactic: #79e0a5;
+            --edge-semantic: #5bd6ff;
+            --edge-other: #caa4ff;
+        }
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1e1e1e;
-            color: #d4d4d4;
+            font-family: "Space Grotesk", system-ui, sans-serif;
+            background: radial-gradient(1200px circle at 15% 10%, #1c2340 0%, #101520 45%, #0b0d12 100%);
+            color: var(--text);
+            height: 100vh;
             overflow: hidden;
         }
-        
+
+        #app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
         #header {
-            height: 50px;
-            background: #252526;
-            border-bottom: 1px solid #3e3e42;
-            display: flex;
-            align-items: center;
-            padding: 0 16px;
-            gap: 16px;
-        }
-        
-        #title {
-            font-size: 18px;
-            font-weight: 500;
-        }
-        
-        #search {
-            flex: 1;
-            max-width: 300px;
-            padding: 6px 12px;
-            background: #3c3c3c;
-            border: 1px solid #5a5a5a;
-            border-radius: 4px;
-            color: #d4d4d4;
-        }
-        
-        #controls {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .button {
-            padding: 6px 12px;
-            background: #0e639c;
-            border: none;
-            border-radius: 4px;
-            color: white;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .button:hover {
-            background: #1177bb;
-        }
-        
-        #container {
-            display: flex;
-            height: calc(100vh - 50px);
-        }
-        
-        #sidebar {
-            width: 300px;
-            background: #252526;
-            border-right: 1px solid #3e3e42;
-            padding: 16px;
-            overflow-y: auto;
-        }
-        
-        #main {
-            flex: 1;
-            padding: 24px;
-            overflow: auto;
-        }
-        
-        #grid {
             display: grid;
-            gap: 16px;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            max-width: 1200px;
-            margin: 0 auto;
+            grid-template-columns: auto 1fr auto;
+            gap: 24px;
+            align-items: center;
+            padding: 18px 24px;
+            background: linear-gradient(90deg, rgba(15, 19, 30, 0.98), rgba(18, 22, 34, 0.85));
+            border-bottom: 1px solid var(--border);
+            box-shadow: var(--shadow);
+            z-index: 10;
         }
-        
-        .module-card {
-            background: #2d2d30;
-            border: 1px solid #3e3e42;
-            border-radius: 8px;
-            padding: 16px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .module-card:hover {
-            background: #383838;
-            border-color: #5a5a5a;
-        }
-        
-        .module-card.selected {
-            border-color: #0e639c;
-            box-shadow: 0 0 0 2px rgba(14, 99, 156, 0.3);
-        }
-        
-        .module-header {
+
+        .brand {
             display: flex;
             align-items: center;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-        
-        .module-icon {
-            width: 20px;
-            height: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-        }
-        
-        .module-name {
-            font-size: 16px;
-            font-weight: 500;
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        
-        .module-stats {
-            display: flex;
-            gap: 16px;
-            font-size: 13px;
-            color: #9d9d9d;
-        }
-        
-        .stat {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .module-details {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #3e3e42;
-        }
-        
-        .detail-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 4px 0;
-            font-size: 13px;
-        }
-        
-        .detail-icon {
-            width: 16px;
-            height: 16px;
-            color: #9d9d9d;
-        }
-        
-        .hierarchy-view {
-            margin-top: 16px;
-        }
-        
-        .hierarchy-level {
-            margin-left: 16px;
-            border-left: 2px solid #3e3e42;
-            padding-left: 12px;
-            margin-top: 8px;
-        }
-        
-        .breadcrumb {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 16px;
-            font-size: 14px;
-        }
-        
-        .breadcrumb-item {
-            color: #9d9d9d;
-            cursor: pointer;
-        }
-        
-        .breadcrumb-item:hover {
-            color: #d4d4d4;
-        }
-        
-        .breadcrumb-separator {
-            color: #5a5a5a;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #9d9d9d;
-        }
-        
-        .status {
-            font-size: 12px;
-            color: #9d9d9d;
-        }
-        
-        .concept-section {
-            margin-bottom: 24px;
-        }
-        
-        .concept-section h3 {
-            margin: 0 0 10px 0;
-            color: #9d9d9d;
-            font-size: 16px;
-            font-weight: 500;
-        }
-        
-        .concepts-grid {
-            display: grid;
             gap: 12px;
         }
-        
-        .concept-card {
-            background: #2d2d30;
-            border: 1px solid #3e3e42;
-            border-radius: 8px;
-            padding: 16px;
+
+        .logo-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #b7f0ff, #25b8ff 60%, #0060a8 100%);
+            box-shadow: 0 0 20px rgba(91, 214, 255, 0.4);
+        }
+
+        .title {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.2px;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1.6px;
+        }
+
+        .search {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 620px;
+        }
+
+        .search input {
+            flex: 1;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(11, 15, 25, 0.9);
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .search input::placeholder {
+            color: rgba(154, 164, 183, 0.7);
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .button {
+            padding: 8px 14px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: rgba(25, 31, 46, 0.9);
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.2s ease;
         }
-        
-        .concept-card:hover {
-            background: #383838;
-            border-color: #5a5a5a;
+
+        .button:hover {
+            border-color: rgba(91, 214, 255, 0.6);
+            box-shadow: 0 0 15px rgba(91, 214, 255, 0.2);
         }
-        
-        .concept-header {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 8px;
+
+        .button.primary {
+            background: linear-gradient(135deg, #1597ff, #3ec6ff);
+            color: #0b0f18;
+            border-color: transparent;
         }
-        
-        .concept-name {
-            font-size: 14px;
-            font-weight: 500;
-            flex: 1;
-        }
-        
-        .concept-details {
+
+        .status {
             font-size: 12px;
-            color: #9d9d9d;
+            color: var(--muted);
+            padding-left: 12px;
         }
-        
-        .concept-relationships {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #3e3e42;
+
+        #content {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            height: calc(100vh - 72px);
         }
-        
-        .concept-relationships h4 {
-            margin: 0 0 8px 0;
-            font-size: 14px;
-            color: #9d9d9d;
+
+        #sidebar {
+            background: var(--panel);
+            border-right: 1px solid var(--border);
+            padding: 18px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
         }
-        
-        .relationship {
+
+        .panel {
+            background: var(--panel-strong);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .panel h3 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1.4px;
+            color: var(--muted);
+        }
+
+        .panel label {
+            font-size: 13px;
+            color: var(--text);
             display: flex;
             align-items: center;
             gap: 8px;
-            margin: 4px 0;
+        }
+
+        .panel input[type="checkbox"] {
+            accent-color: var(--accent);
+        }
+
+        .legend-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            color: var(--text);
+        }
+
+        .swatch {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .swatch.workspace { background: var(--node-workspace); }
+        .swatch.package { background: var(--node-package); }
+        .swatch.module { background: var(--node-module); }
+        .swatch.directory { background: var(--node-directory); }
+        .swatch.file { background: var(--node-file); }
+        .swatch.class { background: var(--node-class); }
+        .swatch.struct { background: var(--node-struct); }
+        .swatch.enum { background: var(--node-enum); }
+        .swatch.interface { background: var(--node-interface); }
+        .swatch.function { background: var(--node-function); }
+        .swatch.method { background: var(--node-method); }
+        .swatch.constant { background: var(--node-constant); }
+        .swatch.typealias { background: var(--node-typealias); }
+        .swatch.configblock { background: var(--node-configblock); }
+        .swatch.configkey { background: var(--node-configkey); }
+        .swatch.envvariable { background: var(--node-envvariable); }
+        .swatch.route { background: var(--node-route); }
+        .swatch.migration { background: var(--node-migration); }
+        .swatch.cijob { background: var(--node-cijob); }
+        .swatch.dockerservice { background: var(--node-dockerservice); }
+        .swatch.unknown { background: var(--node-unknown); }
+        .swatch.edge-contains { background: var(--edge-contains); }
+        .swatch.edge-syntactic { background: var(--edge-syntactic); }
+        .swatch.edge-semantic { background: var(--edge-semantic); }
+        .swatch.edge-other { background: var(--edge-other); }
+
+        #node-details {
             font-size: 13px;
         }
-        
-        .relationship span:first-child {
-            color: #0e639c;
+
+        #node-details .empty {
+            color: var(--muted);
         }
-        
-        .file-section {
-            margin-bottom: 20px;
+
+        #node-details pre {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 11px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            background: rgba(10, 12, 20, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
         }
-        
-        .file-header {
-            font-size: 16px;
-            font-weight: 500;
-            margin-bottom: 10px;
-            color: #d4d4d4;
+
+        #node-details .summary {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text);
+            background: rgba(14, 20, 34, 0.7);
+            border: 1px solid rgba(91, 214, 255, 0.2);
+            padding: 10px 12px;
+            border-radius: 12px;
+        }
+
+        #main {
+            position: relative;
+            background: radial-gradient(1000px circle at 70% 0%, rgba(91, 214, 255, 0.08), transparent 60%),
+                        linear-gradient(160deg, rgba(27, 32, 48, 0.85), rgba(13, 16, 24, 0.95));
+            overflow: hidden;
+        }
+
+        #graph {
+            width: 100%;
+            height: 100%;
+        }
+
+        #empty-state {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--muted);
+            font-size: 14px;
+            letter-spacing: 0.4px;
+        }
+
+        .node rect {
+            stroke: rgba(255, 255, 255, 0.16);
+            stroke-width: 1px;
+        }
+
+        .node.kind-workspaceroot rect { fill: var(--node-workspace); }
+        .node.kind-package rect { fill: var(--node-package); }
+        .node.kind-module rect { fill: var(--node-module); }
+        .node.kind-directory rect { fill: var(--node-directory); }
+        .node.kind-file rect { fill: var(--node-file); }
+        .node.kind-class rect { fill: var(--node-class); }
+        .node.kind-struct rect { fill: var(--node-struct); }
+        .node.kind-enum rect { fill: var(--node-enum); }
+        .node.kind-interface rect { fill: var(--node-interface); }
+        .node.kind-function rect { fill: var(--node-function); }
+        .node.kind-method rect { fill: var(--node-method); }
+        .node.kind-constant rect { fill: var(--node-constant); }
+        .node.kind-typealias rect { fill: var(--node-typealias); }
+        .node.kind-configblock rect { fill: var(--node-configblock); }
+        .node.kind-configkey rect { fill: var(--node-configkey); }
+        .node.kind-envvariable rect { fill: var(--node-envvariable); }
+        .node.kind-route rect { fill: var(--node-route); }
+        .node.kind-migration rect { fill: var(--node-migration); }
+        .node.kind-cijob rect { fill: var(--node-cijob); }
+        .node.kind-dockerservice rect { fill: var(--node-dockerservice); }
+        .node.kind-unknown rect { fill: var(--node-unknown); }
+
+        .node text {
+            font-size: 11px;
+            fill: var(--text);
+            pointer-events: none;
+        }
+
+        .node.is-match rect {
+            stroke: var(--accent);
+            stroke-width: 2px;
+            filter: drop-shadow(0 0 8px rgba(91, 214, 255, 0.5));
+        }
+
+        .node.is-dimmed {
+            opacity: 0.25;
+        }
+
+        .node.is-hidden {
+            display: none;
+        }
+
+        .edge {
+            fill: none;
+            stroke-width: 1.4px;
+            opacity: 0.85;
+        }
+
+        .edge.contains {
+            stroke: var(--edge-contains);
+        }
+
+        .edge.syntactic {
+            stroke: var(--edge-syntactic);
+        }
+
+        .edge.semantic {
+            stroke: var(--edge-semantic);
+            stroke-dasharray: 6 6;
+        }
+
+        .edge.other {
+            stroke: var(--edge-other);
+            opacity: 0.7;
+        }
+
+        .edge.is-hidden {
+            display: none;
+        }
+
+        .edge.is-highlighted {
+            stroke-width: 2.6px;
+            opacity: 1;
+        }
+
+        @media (max-width: 960px) {
+            #content {
+                grid-template-columns: 1fr;
+            }
+
+            #sidebar {
+                display: none;
+            }
+
+            #header {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .search {
+                max-width: none;
+            }
+
+            .toolbar {
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
         }
     </style>
 </head>
 <body>
-    <div id="header">
-        <div id="title">Canopy</div>
-        <input type="text" id="search" placeholder="Search modules...">
-        <div id="controls">
-            <button class="button" id="back-button" onclick="goBack()" style="display: none;">← Back</button>
-            <button class="button" onclick="viewHierarchical()">Hierarchical View</button>
-            <button class="button" onclick="viewFlat()">Flat View</button>
-            <span class="status" id="status">Connecting...</span>
-        </div>
-    </div>
-    
-    <div id="container">
-        <div id="sidebar">
-            <h3>Filters</h3>
-            <div id="filters">
-                <label><input type="checkbox" id="filter-directories" checked> Directories</label><br>
-                <label><input type="checkbox" id="filter-files" checked> Files</label><br>
-                <label><input type="checkbox" id="filter-functions" checked> Functions</label><br>
-                <label><input type="checkbox" id="filter-classes" checked> Classes</label><br>
-                <label><input type="checkbox" id="filter-ai" checked> AI Relationships</label>
-            </div>
-            
-            <h3>Legend</h3>
-            <div id="legend">
-                <div class="detail-row">
-                    <span class="detail-icon">📁</span> Directory
-                </div>
-                <div class="detail-row">
-                    <span class="detail-icon">📄</span> File
-                </div>
-                <div class="detail-row">
-                    <span class="detail-icon">ƒ</span> Function
-                </div>
-                <div class="detail-row">
-                    <span class="detail-icon">○</span> Class
+    <div id="app">
+        <header id="header">
+            <div class="brand">
+                <span class="logo-dot"></span>
+                <div>
+                    <div class="title">Canopy</div>
+                    <div class="subtitle">Live code graph</div>
                 </div>
             </div>
-        </div>
-        
-        <div id="main">
-            <div id="breadcrumb" class="breadcrumb" style="display: none;">
-                <span class="breadcrumb-item" onclick="navigateToRoot()">Root</span>
-                <span class="breadcrumb-separator">/</span>
-                <span id="current-path"></span>
+            <div class="search">
+                <input id="search-input" type="text" placeholder="Search nodes, paths, or symbols">
+                <button class="button" id="search-button">Search</button>
             </div>
-            
-            <div id="grid" class="loading">
-                Loading code structure...
+            <div class="toolbar">
+                <button class="button primary" id="layout-toggle">Layout: Orbit</button>
+                <button class="button" id="fit-button">Fit</button>
+                <button class="button" id="reset-button">Reset</button>
+                <span class="status" id="status">Connecting...</span>
             </div>
+        </header>
+
+        <div id="content">
+            <aside id="sidebar">
+                <div class="panel">
+                    <h3>Filters</h3>
+                    <label><input type="checkbox" id="filter-directories" checked> Directories</label>
+                    <label><input type="checkbox" id="filter-files" checked> Files</label>
+                    <label><input type="checkbox" id="filter-symbols" checked> Symbols</label>
+                </div>
+                <div class="panel">
+                    <h3>Edges</h3>
+                    <label><input type="checkbox" id="filter-edges-contains" checked> Contains</label>
+                    <label><input type="checkbox" id="filter-edges-syntactic" checked> Syntactic</label>
+                    <label><input type="checkbox" id="filter-edges-semantic" checked> Semantic</label>
+                    <label><input type="checkbox" id="filter-edges-other" checked> Other</label>
+                </div>
+                <div class="panel">
+                    <h3>Legend: Nodes</h3>
+                    <div class="legend-row"><span class="swatch workspace"></span> Workspace root</div>
+                    <div class="legend-row"><span class="swatch package"></span> Package</div>
+                    <div class="legend-row"><span class="swatch module"></span> Module</div>
+                    <div class="legend-row"><span class="swatch directory"></span> Directory</div>
+                    <div class="legend-row"><span class="swatch file"></span> File</div>
+                    <div class="legend-row"><span class="swatch class"></span> Class</div>
+                    <div class="legend-row"><span class="swatch struct"></span> Struct</div>
+                    <div class="legend-row"><span class="swatch enum"></span> Enum</div>
+                    <div class="legend-row"><span class="swatch interface"></span> Interface</div>
+                    <div class="legend-row"><span class="swatch function"></span> Function</div>
+                    <div class="legend-row"><span class="swatch method"></span> Method</div>
+                    <div class="legend-row"><span class="swatch constant"></span> Constant</div>
+                    <div class="legend-row"><span class="swatch typealias"></span> Type alias</div>
+                    <div class="legend-row"><span class="swatch configblock"></span> Config block</div>
+                    <div class="legend-row"><span class="swatch configkey"></span> Config key</div>
+                    <div class="legend-row"><span class="swatch envvariable"></span> Env variable</div>
+                    <div class="legend-row"><span class="swatch route"></span> Route</div>
+                    <div class="legend-row"><span class="swatch migration"></span> Migration</div>
+                    <div class="legend-row"><span class="swatch cijob"></span> CI job</div>
+                    <div class="legend-row"><span class="swatch dockerservice"></span> Docker service</div>
+                    <div class="legend-row"><span class="swatch unknown"></span> Unknown</div>
+                </div>
+                <div class="panel">
+                    <h3>Legend: Edges</h3>
+                    <div class="legend-row"><span class="swatch edge-contains"></span> Contains</div>
+                    <div class="legend-row"><span class="swatch edge-syntactic"></span> Syntactic</div>
+                    <div class="legend-row"><span class="swatch edge-semantic"></span> Semantic</div>
+                    <div class="legend-row"><span class="swatch edge-other"></span> Other</div>
+                </div>
+                <div class="panel" id="node-details">
+                    <h3>Details</h3>
+                    <div class="empty">Select a node to inspect metadata.</div>
+                </div>
+            </aside>
+            <main id="main">
+                <svg id="graph"></svg>
+                <div id="empty-state">Waiting for graph data...</div>
+            </main>
         </div>
     </div>
 
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="protocol.js"></script>
-    <script src="grid-view.js"></script>
+    <script src="graph.js"></script>
 </body>
 </html>

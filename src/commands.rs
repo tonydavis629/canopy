@@ -1,6 +1,7 @@
 //! CLI command implementations
 
 use canopy_core::{Graph, Language};
+use canopy_ai::providers::create_provider;
 use canopy_server::{CanopyServer, ServerConfig, ServerState};
 use canopy_watcher::WatcherService;
 use std::path::PathBuf;
@@ -39,7 +40,19 @@ async fn run_watcher(root: PathBuf, state: Arc<ServerState>) -> anyhow::Result<(
     
     // Create watcher service with shared graph and broadcast channel
     let graph = Arc::clone(&state.graph);
-    let watcher = WatcherService::with_broadcast(&root, graph, state.diff_tx.clone())?;
+    let mut watcher = WatcherService::with_broadcast(&root, graph, state.diff_tx.clone())?;
+
+    let provider_name = std::env::var("CANOPY_AI_PROVIDER").unwrap_or_else(|_| "local".to_string());
+    let api_key = std::env::var("CANOPY_AI_API_KEY").ok();
+    match create_provider(&provider_name, api_key) {
+        Ok(provider) => {
+            watcher = watcher.with_ai_provider(Arc::from(provider));
+            tracing::info!("AI provider enabled: {}", provider_name);
+        }
+        Err(err) => {
+            tracing::warn!("Failed to initialize AI provider '{}': {}", provider_name, err);
+        }
+    }
     
     // Start watching
     watcher.start_watching().await?;

@@ -7,25 +7,35 @@ let selectedModule = null;
 
 // Initialize the grid view
 function initGridView() {
-    // Connect to WebSocket
+    console.log('Initializing grid view...');
+    
+    // Set up event listeners
+    const searchElement = document.getElementById('search');
+    if (searchElement) {
+        searchElement.addEventListener('input', handleSearch);
+    }
+    
+    // Set up filter listeners
+    const filters = ['directories', 'files', 'functions', 'classes', 'ai'];
+    filters.forEach(filter => {
+        const filterElement = document.getElementById(`filter-${filter}`);
+        if (filterElement) {
+            filterElement.addEventListener('change', updateView);
+        }
+    });
+    
+    // Set up zoom with mouse wheel
+    const mainContainer = document.getElementById('main');
+    if (mainContainer) {
+        mainContainer.addEventListener('wheel', handleZoom, { passive: false });
+    }
+    
+    // Connect to WebSocket after setting up UI
     if (window.WebSocketProtocol) {
         window.WebSocketProtocol.connect();
     } else {
         connectWebSocket();
     }
-    
-    // Set up event listeners
-    document.getElementById('search').addEventListener('input', handleSearch);
-    
-    // Set up filter listeners
-    const filters = ['directories', 'files', 'functions', 'classes', 'ai'];
-    filters.forEach(filter => {
-        document.getElementById(`filter-${filter}`).addEventListener('change', updateView);
-    });
-    
-    // Set up zoom with mouse wheel
-    const mainContainer = document.getElementById('main');
-    mainContainer.addEventListener('wheel', handleZoom, { passive: false });
 }
 
 // Connect to WebSocket
@@ -44,6 +54,7 @@ function connectWebSocket() {
             applyDiff(data.diff);
         } else if (data.type === 'full_graph') {
             currentGraph = data.graph;
+            window.currentGraph = data.graph;  // Also set global for protocol.js
             renderHierarchicalView();
         }
     };
@@ -701,7 +712,12 @@ function applyDiff(diff) {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', initGridView);
 
-// Export for use in other scripts
+// Export functions to global scope for protocol.js
+window.renderHierarchicalView = renderHierarchicalView;
+window.renderFlatView = renderFlatView;
+window.currentGraph = currentGraph;
+
+// Also export as GridView object
 window.GridView = {
     renderHierarchicalView,
     renderFlatView,

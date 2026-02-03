@@ -277,7 +277,19 @@ impl WatcherService {
         };
 
         // Update the graph incrementally
-        let graph_diff = self.update_graph_incrementally(path, extraction_result.clone(), old_nodes, old_edges).await?;
+        let mut graph_diff = self.update_graph_incrementally(path, extraction_result.clone(), old_nodes, old_edges).await?;
+
+        if let Some(summary_updates) = self.generate_node_summaries(path, &graph_diff.added_nodes).await? {
+            if !summary_updates.modified_ids.is_empty() {
+                graph_diff.modified_nodes.extend(summary_updates.modified_ids.clone());
+                // Update added nodes in the diff payload with the summaries
+                for node in &mut graph_diff.added_nodes {
+                    if let Some(summary) = summary_updates.summaries.get(&node.id) {
+                        node.metadata.insert("ai_summary".to_string(), summary.clone());
+                    }
+                }
+            }
+        }
 
         // Perform AI semantic analysis on newly added nodes
         if self.ai_provider.is_some() && !extraction_result.nodes.is_empty() {
@@ -573,6 +585,66 @@ impl WatcherService {
         info!("AI analysis complete: {} semantic edges inferred", ai_edges.len());
         Ok(ai_edges)
     }
+
+    async fn generate_node_summaries(
+        &self,
+        path: &Path,
+        added_nodes: &[GraphNode],
+    ) -> Result<Option<SummaryUpdates>> {
+        let Some(ai_provider) = &self.ai_provider else {
+            return Ok(None);
+        };
+
+        if added_nodes.is_empty() {
+            return Ok(None);
+        }
+
+        let mut summaries = HashMap::new();
+        let mut modified_ids = Vec::new();
+
+        for node in added_nodes {
+            let context = AnalysisContext {
+                file_path: path.to_path_buf(),
+                language: format!("{:?}", node.language.unwrap_or(canopy_core::Language::Other)),
+                enclosing_context: Vec::new(),
+                imports: Vec::new(),
+                project_context: HashMap::new(),
+            };
+
+            match ai_provider.generate_node_summary(node, &context).await {
+                Ok(summary) => {
+                    summaries.insert(node.id, summary.clone());
+                    modified_ids.push(node.id);
+                }
+                Err(err) => {
+                    warn!("AI summary failed for {}: {}", node.name, err);
+                }
+            }
+        }
+
+        if summaries.is_empty() {
+            return Ok(None);
+        }
+
+        {
+            let mut graph = self.graph.write().await;
+            for (node_id, summary) in summaries.iter() {
+                if let Some(node) = graph.node_mut(*node_id) {
+                    node.metadata.insert("ai_summary".to_string(), summary.clone());
+                }
+            }
+        }
+
+        Ok(Some(SummaryUpdates {
+            summaries,
+            modified_ids,
+        }))
+    }
+}
+
+struct SummaryUpdates {
+    summaries: HashMap<NodeId, String>,
+    modified_ids: Vec<NodeId>,
 }
 
 /// Check if a path is a code file we should process

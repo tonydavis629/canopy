@@ -16,8 +16,10 @@ function connectWebSocket() {
         updateStatus('Connected');
         reconnectAttempts = 0;
         
-        // Request full graph on connection
-        requestFullGraph();
+        // Wait a bit for grid view to be ready, then request full graph
+        setTimeout(() => {
+            requestFullGraph();
+        }, 100);
     };
     
     ws.onmessage = (event) => {
@@ -73,11 +75,33 @@ function handleGraphDiff(diff) {
 function handleFullGraph(graph) {
     console.log('Received full graph:', graph);
     window.currentGraphData = graph;
-    // Call renderGraph from the global scope (defined in graph.js)
+    window.currentGraph = graph;  // Also set currentGraph for grid-view.js
+    
+    // Ensure grid is ready before rendering
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            renderGraphData(graph);
+        });
+    } else {
+        renderGraphData(graph);
+    }
+}
+
+// Render graph data using available functions
+function renderGraphData(graph) {
+    // Call appropriate render function
     if (typeof window.renderGraph === 'function') {
         window.renderGraph(graph);
+    } else if (typeof window.GridView !== 'undefined' && typeof window.GridView.renderHierarchicalView === 'function') {
+        window.GridView.renderHierarchicalView();
+    } else if (typeof window.renderHierarchicalView === 'function') {
+        window.renderHierarchicalView();
     } else {
-        console.error('renderGraph function not found');
+        console.error('No render function found');
+        // Try to manually trigger rendering
+        if (window.currentGraph && typeof window.renderHierarchicalView === 'function') {
+            window.renderHierarchicalView();
+        }
     }
 }
 

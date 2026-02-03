@@ -15,109 +15,84 @@
 - `canopy-server` - HTTP/WebSocket server
 - `canopy-watcher` - File watcher (stub)
 
-## Current Status (2026-02-02)
-
-# TONY's TODOs:
-Add doc .md files in each module
-
-Back button should take you to a higher hierachy in the visualization.
-The nodes need to be separated in space, and need to be connected with edges. The visualization is not visualizating any relationships. The point of the project is to make it clearer what the code is doing. Use the AI service to help understand the larger module uses and connections.
-The only entities that are plotted are files. It should be any concept. All classes, functions, etc should have their own node.
-
-Zoom should be implemented with scroll wheel, taking you deeper into specifics or higher in the 'canopy' (more general modules)
-The pathing description at the top has a bug: Root/ sample-rust-project / src / main.rs / Cargo.toml / Cargo.toml / Cargo.toml / src / lib.rs / Cargo.toml. It is only additive.
-- Comprehensive test suite (unit, integration, snapshot, browser)
+## Current Status (2026-02-03)
 
 
-
-### ✅ Completed
-1. **Workspace Setup**
-   - All 5 crates compile successfully
-   - Rust edition 2024, Linux target only
-   - Dependencies: petgraph, tree-sitter, clap, axum, tokio
-
-2. **Core Implementation**
-   - Graph data structure with StableDiGraph
-   - NodeId/EdgeId types with custom hashing
-   - GraphNode/GraphEdge models with serialization
-   - Symbols, aggregation, diff, and cache modules
-
-3. **CLI Implementation**
-   - Commands: serve, index, clear, version
-   - Filesystem walking with Directory/File nodes
-   - Contains edges between parent/child
-   - Successfully indexed 5158 nodes, 5157 edges
-
-4. **HTTP Server**
-   - Axum-based server on port 7890
-   - REST API: GET /api/graph returns JSON
-   - Static file serving for client assets
-   - WebSocket endpoint at /ws
-
-5. **Browser Client**
-   - HTML/CSS interface with dark theme
-   - D3.js integration
-   - WebSocket connection established
-   - Responsive layout with sidebar
-
-6. **WebSocket Protocol Fix** ✨
-   - Server now sends `full_graph` message on WebSocket connect
-   - Graph data properly serialized with nodes/edges arrays
-   - Frontend receives and can process graph data
-
-7. **Tree-sitter Language Extraction** 🌳
-   - Implemented Rust language extractor with tree-sitter
-   - Implemented TypeScript language extractor with tree-sitter
-   - Extracts functions, classes, methods, and imports
-   - Creates GraphNode and GraphEdge entries for symbols
-   - All language extractors properly structured
+### ✅ Completed (Short)
+1. **Core plumbing**: workspace, graph model, CLI, HTTP/WS server, static client serving
+2. **Frontend baseline**: modern SVG graph, controls, legend, details panel
+3. **Language extraction baseline**: Rust + TypeScript extractors wired and compiling
 
 ### 🔄 In Progress (Milestone 2)
-1. **Semantic Understanding & AI Integration** ✅ In Progress
-   - ✅ Implemented AI-powered code analysis bridge in `canopy-ai`
-   - ✅ Added semantic relationship detection (Calls, DependsOn, Uses, Configures)
-   - ✅ Created OpenAI provider with GPT-4 integration
-   - ✅ Added local heuristic provider for offline analysis
-   - ✅ Implemented confidence scoring for AI-inferred relationships
-   - ✅ Added budget tracking and caching for API usage
-   - 🔄 Integrate LLM for code understanding and summarization
+1. **Rust-First Extraction Hardening (Priority)**
+   - 🔄 Expand Rust extractor to cover modules, `mod` trees, and `use` resolution
+   - 🔄 Extract traits/impl blocks, associated methods, and generics
+   - 🔄 Capture macro invocations and derive-driven relationships (best-effort)
+   - 🔄 Map Rust symbols to file paths and line ranges deterministically
+   - 🔄 Emit structural edges: imports, calls, type references, implements/traits
+
+2. **Semantic Understanding & AI Integration**
+   - ✅ AI bridge scaffolding (OpenAI + local provider, caching, budgets)
+   - 🔄 Integrate LLM summarization into the pipeline
    - 🔄 Add Anthropic provider support
+   - 🔄 Persist AI summaries onto nodes for frontend display
 
-2. **Advanced Language Support**
-   - 🔄 Complete Python language extractor implementation
-   - 🔄 Complete Go language extractor implementation
-   - 🔄 Complete Java language extractor implementation
-   - 🔄 Add support for configuration files (YAML, TOML, JSON)
-   - 🔄 Implement import/require resolution for all languages
+3. **Enhanced Visualization (Priority)**
+   - 🔄 Stabilize layout so nodes stay visible/readable
+   - 🔄 Enforce <= 500 visible nodes with automatic abstraction
+   - 🔄 Semantic zoom: workspace → packages/modules → directories → files → symbols
+   - 🔄 Hierarchical/module-aware aggregation and edge rollups
+   - 🔄 Expand semantic coloring + full legend (per-node-kind + edge-source)
+   - 🔄 Layout presets that never collapse into unreadable lines
 
-3. **Enhanced Visualization**
-   - 🔄 Add hierarchical layout options (tree, radial, force-directed presets)
-   - 🔄 Implement semantic coloring and edge styling
-   - 🔄 Add node clustering and aggregation views
-   - 🔄 Create semantic zoom (show/hide details based on zoom level)
+4. **Advanced Language + Config Support**
+   - 🔄 Complete Python/Go/Java extractors
+   - 🔄 Add config parsing (YAML/TOML/JSON/Dockerfile/etc.)
+   - 🔄 Implement cross-file import/require resolution
 
-### 📋 Next Steps (Milestone 2)
-1. **AI Bridge Implementation** ✅ Core Complete
-   - ✅ Set up `canopy-ai` crate with LLM integration
-   - ✅ Implement semantic analysis pipeline
-   - ✅ Add relationship inference with confidence scoring
-   - 🔄 Add Anthropic provider support
-   - 🔄 Integrate AI analysis into file watcher
+### 📋 Next Steps (Milestone 2 - Explicit Stages)
+1. **Stage A: Rust Extractor Completion (Rust-First)**
+   - Implement full Rust symbol coverage: modules, traits, impl blocks, methods, consts, type aliases
+   - Add `use`/path resolution for intra-crate references
+   - Emit Imports/Calls/TypeReference/Implements edges for Rust
+   - Verify with fixtures in `tests/fixtures` and snapshot tests
 
-2. **Complete Language Extractors**
-   - 🔄 Finish Python, Go, Java extractors (currently stubs)
-   - 🔄 Add import resolution for all languages
-   - 🔄 Implement cross-file reference tracking
+2. **Stage B: Module Graph Layer**
+   - Add module nodes to the core graph model
+   - Roll files up into modules and emit module-to-module edges
+   - Extend aggregation logic for module-aware rollups
 
-3. **Semantic Visualization**
-   - 🔄 Add hierarchical layout algorithms
-   - 🔄 Implement semantic edge styling
-   - 🔄 Create node clustering based on semantic relationships
+3. **Stage C: Frontend Solidification**
+   - Enforce max 500 visible nodes with automatic abstraction
+   - Implement semantic zoom (auto-levels by zoom)
+   - Make layouts never collapse into a line; keep labels readable
+   - Upgrade legend to full per-kind colors and edge-source styling
+   - Show AI summary + structural metadata in details panel
 
-4. **MCP Server Integration**
-   - 🔄 Implement Model Context Protocol server
-   - 🔄 Add graph-based context for AI agents
-   - 🔄 Create semantic search endpoints
+4. **Stage D: AI Summaries**
+   - Wire summarization into indexing or post-index pipeline
+   - Cache and persist summaries on nodes
+   - Surface summaries in API/WS payloads
+
+5. **Stage E: Remaining Language + Config Support**
+   - Finish Python/Go/Java extractors
+   - Add config parsing and link config-to-code
+   - Add cross-file reference tracking across languages
+
+6. **Stage F: MCP Server**
+   - Implement MCP endpoints for graph queries
+   - Add semantic search endpoints
+
+### 🔜 Immediate Next Steps (2026-02-03)
+1. **Backend Module Graph (Stage B focus)**
+   - Add explicit module nodes (directory-level and language module constructs).
+   - Emit module-to-module edges derived from file/symbol edges.
+2. **AI Summaries on Initial Index (Stage D focus)**
+   - Generate summaries for existing graph nodes at startup (not just new changes).
+   - Cache + persist summaries and include them in API/WS payloads.
+3. **Frontend Diff + Aggregation Polish (Stage C focus)**
+   - Improve `client/protocol.js` to apply diffs incrementally.
+   - Use backend aggregation hints to avoid path-based fallback in the UI.
 
 ### ✅ Completed Milestones
 - **Milestone 1**: Navigable Hierarchy - Live code visualization with basic interactions
@@ -141,11 +116,67 @@ The pathing description at the top has a bug: Root/ sample-rust-project / src / 
 - `/client/protocol.js` - WebSocket handling
 
 ## Development Notes
-- Using coding-agent skill (Claude Code) for implementations
 - Following test-driven development
 - Committing directly to main when confident
 - Manual testing with Chrome browser
-- Focus on M1 scope only (no M2 features yet)
+- Focus on Milestone 2 with frontend stabilization first
+
+## Frontend Behavior Requirements (Must Haves)
+1. **Visibility**
+   - Nodes must always be visible and readable on screen.
+   - Layouts must never collapse into a single vertical or horizontal line.
+
+2. **Scale Control**
+   - Never render more than 500 nodes at once.
+   - When the graph would exceed 500 nodes, automatically aggregate to a higher level.
+
+3. **Semantic Zoom**
+   - Zoomed out: show workspace/packages/modules.
+   - Mid zoom: show directories and module boundaries.
+   - Zoomed in: show files and code entities.
+   - Aggregation must be automatic and reversible as zoom changes.
+
+4. **Modules**
+   - Represent module nodes (not just files).
+   - Files roll up into modules.
+   - Modules connect to other modules via aggregated edges.
+
+5. **Edge Semantics**
+   - Distinguish syntactic (structural) edges from semantic (AI/heuristic) edges.
+   - Edge styling and legend must clearly reflect the distinction.
+
+6. **Legend & Colors**
+   - Legend must show distinct colors for each node kind and edge class.
+   - Colors must be consistent across the graph and details panel.
+
+7. **Details Panel**
+   - Include a short AI-informed summary for each object (node).
+   - Show both structural metadata (path, kind, symbols) and AI summary.
+
+## Missing Work Plan (to close gaps)
+1. **Frontend Solidification**
+   - Implement zoom-driven aggregation with a hard 500-node cap.
+   - Introduce module nodes and module-level edges.
+   - Fix layout presets to preserve readability and always keep nodes on screen.
+   - Update legend with per-kind colors and edge source styling.
+   - Add AI summary to details panel.
+
+2. **Backend Support for Frontend**
+   - Add module nodes and module edges in the indexer/core graph.
+   - Expose aggregation levels and node-count hints in API/WS payloads.
+   - Provide AI summaries for nodes via canopy-ai (cached).
+
+3. **AI Bridge**
+   - Add Anthropic provider and wire into summarization pipeline.
+   - Store and serve AI summaries in GraphNode metadata.
+
+4. **Language & Config Extraction**
+   - Finish Python/Go/Java extractors.
+   - Implement config parsing (YAML/TOML/JSON) and import resolution.
+
+5. **Testing**
+   - Add browser tests for zoom/aggregation and node-cap behavior.
+   - Add snapshot tests for module aggregation and edge styling metadata.
 
 ## Blockers
 None currently - proceeding with graph visualization
@@ -154,13 +185,15 @@ None currently - proceeding with graph visualization
 - Working CLI with filesystem indexing
 - HTTP server implementation
 - Browser client scaffolding
+- Frontend graph overhaul: SVG nodes/edges, modern styling, no emojis
+- Layout toggle + fit/reset controls
+- Search, filters, and details panel improvements
 - WebSocket connection establishment
 - WebSocket protocol fix (full_graph message)
 - Tree-sitter language extraction for Rust/TypeScript
 - **Graph rendering fix**: Node ID assignment bug fixed
-- **Performance optimization**: Viewport-based rendering implemented
 - **Search feature**: Real-time node search with highlighting
-- **Filter controls**: Node type filtering (directories, files, functions)
+- **Filter controls**: Node type filtering (directories, files, symbols)
 - **File watching**: Real-time updates with JavaScript extraction working
 - **Milestone 2 - AI Bridge**: Implemented semantic analysis with OpenAI integration
 - **Milestone 2 - AI Providers**: Added OpenAI, Anthropic (stub), and Local providers
