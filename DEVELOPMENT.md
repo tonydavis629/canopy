@@ -18,6 +18,8 @@
 ## Current Status (2026-02-02)
 
 # TONY's TODOs:
+Add doc .md files in each module
+
 Back button should take you to a higher hierachy in the visualization.
 The nodes need to be separated in space, and need to be connected with edges. The visualization is not visualizating any relationships. The point of the project is to make it clearer what the code is doing. Use the AI service to help understand the larger module uses and connections.
 The only entities that are plotted are files. It should be any concept. All classes, functions, etc should have their own node.
