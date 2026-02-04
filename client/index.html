@@ -341,6 +341,14 @@
             filter: drop-shadow(0 0 8px rgba(91, 214, 255, 0.5));
         }
 
+        .node.is-collapsed rect {
+            stroke-dasharray: 4 3;
+        }
+
+        .node.is-expanded rect {
+            stroke-width: 1.6px;
+        }
+
         .node.is-dimmed {
             opacity: 0.25;
         }
@@ -422,7 +430,7 @@
                 <button class="button" id="search-button">Search</button>
             </div>
             <div class="toolbar">
-                <button class="button primary" id="layout-toggle">Layout: Orbit</button>
+                <button class="button primary" id="layout-toggle">Layout: Tree</button>
                 <button class="button" id="fit-button">Fit</button>
                 <button class="button" id="reset-button">Reset</button>
                 <span class="status" id="status">Connecting...</span>

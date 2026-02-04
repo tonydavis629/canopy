@@ -9,11 +9,11 @@ let simulation = null;
 let currentData = null;
 let currentView = null;
 let currentTransform = d3.zoomIdentity;
-let layoutMode = 'hierarchy';
 let searchQuery = '';
 let currentLevel = null;
 let hierarchyCache = null;
 let suppressZoomUpdates = false;
+let expansionOverrides = new Map();
 
 const MAX_VISIBLE_NODES = 500;
 const NODE_WIDTH = 140;
@@ -122,13 +122,8 @@ function setupControls() {
     }
 
     if (layoutToggle) {
-        layoutToggle.addEventListener('click', () => {
-            layoutMode = layoutMode === 'hierarchy' ? 'force' : 'hierarchy';
-            layoutToggle.textContent = `Layout: ${layoutMode === 'hierarchy' ? 'Orbit' : 'Force'}`;
-            if (currentView) {
-                layoutAndRender(currentView, { refit: true });
-            }
-        });
+        layoutToggle.textContent = 'Layout: Tree';
+        layoutToggle.disabled = true;
     }
 
     if (fitButton) {
@@ -221,7 +216,10 @@ function handleZoomLevelChange(scale) {
     if (currentView && currentView.desiredLevel === desiredLevel && currentLevel === currentView.levelIndex) {
         return;
     }
-    updateView({ refit: true });
+    if (!currentView || currentView.desiredLevel !== desiredLevel) {
+        expansionOverrides = new Map();
+    }
+    updateView({ refit: false });
 }
 
 function levelForScale(scale) {
@@ -250,14 +248,7 @@ function computeViewGraph(data, hierarchy, desiredLevel) {
 
 function buildViewGraph(data, hierarchy, levelIndex, capLimit) {
     const levelKey = LEVELS[levelIndex].key;
-    const seeds = selectSeeds(data, hierarchy, levelKey);
-    let visible = new Set();
-
-    if (seeds.length === 0) {
-        hierarchy.roots.forEach((rootId) => visible.add(rootId));
-    } else {
-        seeds.forEach((id) => includeWithAncestors(id, visible, hierarchy.parentById));
-    }
+    let visible = buildVisibleSet(data, hierarchy, levelIndex);
 
     if (capLimit && visible.size > capLimit) {
         visible = capVisibleSet(visible, data, hierarchy, capLimit);
@@ -271,7 +262,8 @@ function buildViewGraph(data, hierarchy, levelIndex, capLimit) {
         }
         const depth = hierarchy.depthById.get(id) || 0;
         const displayKind = displayKindForLevel(node, levelKey, depth);
-        nodes.push({ ...node, displayKind });
+        const expanded = isNodeExpanded(id, node, depth, levelIndex, hierarchy);
+        nodes.push({ ...node, displayKind, expanded });
     });
 
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
@@ -286,6 +278,104 @@ function buildViewGraph(data, hierarchy, levelIndex, capLimit) {
     });
 
     return { nodes, edges, nodeById };
+}
+
+function buildVisibleSet(data, hierarchy, levelIndex) {
+    const visible = new Set();
+    const roots = hierarchy.roots.length ? hierarchy.roots : data.nodes.map((node) => node.id);
+
+    roots.forEach((rootId) => {
+        traverseHierarchy(rootId, 0, data, hierarchy, levelIndex, visible);
+    });
+
+    return visible;
+}
+
+function traverseHierarchy(nodeId, depth, data, hierarchy, levelIndex, visible) {
+    if (visible.has(nodeId)) {
+        return;
+    }
+    visible.add(nodeId);
+
+    const node = data.nodeById.get(nodeId);
+    if (!node) {
+        return;
+    }
+
+    if (!isContainerNode(nodeId, node, hierarchy)) {
+        return;
+    }
+
+    const expanded = isNodeExpanded(nodeId, node, depth, levelIndex, hierarchy);
+    if (!expanded) {
+        return;
+    }
+
+    const children = sortedChildren(nodeId, data, hierarchy);
+    children.forEach((childId) => traverseHierarchy(childId, depth + 1, data, hierarchy, levelIndex, visible));
+}
+
+function sortedChildren(parentId, data, hierarchy) {
+    const children = hierarchy.childrenById.get(parentId) || [];
+    if (children.length <= 1) {
+        return children;
+    }
+    return [...children].sort((a, b) => compareNodes(data.nodeById.get(a), data.nodeById.get(b)));
+}
+
+function compareNodes(a, b) {
+    if (!a || !b) return 0;
+    const kindA = rawKindKey(a);
+    const kindB = rawKindKey(b);
+    if (kindA !== kindB) return kindA.localeCompare(kindB);
+    const pathA = a.file_path || '';
+    const pathB = b.file_path || '';
+    if (pathA !== pathB) return pathA.localeCompare(pathB);
+    const nameA = a.name || '';
+    const nameB = b.name || '';
+    if (nameA !== nameB) return nameA.localeCompare(nameB);
+    return String(a.id).localeCompare(String(b.id));
+}
+
+function isContainerNode(id, node, hierarchy) {
+    if (node && node.is_container) {
+        return true;
+    }
+    const children = hierarchy.childrenById.get(id);
+    return Array.isArray(children) && children.length > 0;
+}
+
+function isNodeExpanded(id, node, depth, levelIndex, hierarchy) {
+    const override = expansionOverrides.get(id);
+    if (override === 'expanded') {
+        return true;
+    }
+    if (override === 'collapsed') {
+        return false;
+    }
+    return shouldAutoExpand(node, depth, levelIndex);
+}
+
+function shouldAutoExpand(node, depth, levelIndex) {
+    if (!node) {
+        return false;
+    }
+    const rawKind = rawKindKey(node);
+    if (rawKind === 'workspaceroot' || (rawKind === 'directory' && depth === 0)) {
+        return true;
+    }
+    const rank = rankForNode(node, depth);
+    return rank < levelIndex;
+}
+
+function rankForNode(node, depth) {
+    const kind = rawKindKey(node);
+    if (kind === 'workspaceroot') return 0;
+    if (kind === 'package' || kind === 'module') return 1;
+    if (kind === 'directory') return depth <= 1 ? 1 : 2;
+    if (kind === 'file') return 3;
+    if (SYMBOL_KINDS.has(kind)) return 4;
+    return 4;
 }
 
 function capVisibleSet(visible, data, hierarchy, capLimit) {
@@ -314,47 +404,6 @@ function capVisibleSet(visible, data, hierarchy, capLimit) {
     return keep;
 }
 
-function selectSeeds(data, hierarchy, levelKey) {
-    const nodes = data.nodes;
-
-    switch (levelKey) {
-        case 'workspace': {
-            let seeds = nodes.filter((node) => isWorkspaceKind(node) || isPackageKind(node));
-            if (seeds.length === 0) {
-                seeds = nodes.filter((node) => isTopLevelDirectory(node, hierarchy.depthById));
-            }
-            return seeds.map((node) => node.id);
-        }
-        case 'module': {
-            let seeds = nodes.filter((node) => isModuleKind(node));
-            if (seeds.length === 0) {
-                seeds = nodes.filter((node) => isTopLevelDirectory(node, hierarchy.depthById));
-            }
-            return seeds.map((node) => node.id);
-        }
-        case 'directory':
-            return nodes.filter((node) => rawKindKey(node) === 'directory').map((node) => node.id);
-        case 'file':
-            return nodes.filter((node) => rawKindKey(node) === 'file').map((node) => node.id);
-        case 'symbol':
-        default:
-            return nodes.filter((node) => SYMBOL_KINDS.has(rawKindKey(node))).map((node) => node.id);
-    }
-}
-
-function includeWithAncestors(id, visible, parentById) {
-    let current = id;
-    while (current !== undefined && current !== null) {
-        if (!visible.has(current)) {
-            visible.add(current);
-        }
-        const parent = parentById.get(current);
-        if (!parent || parent === current) {
-            break;
-        }
-        current = parent;
-    }
-}
 
 function displayKindForLevel(node, levelKey, depth) {
     const kind = rawKindKey(node);
@@ -374,7 +423,8 @@ function buildContainsEdges(nodes, visible, parentById, nodeById) {
     const seen = new Set();
 
     nodes.forEach((node) => {
-        const parent = nearestVisibleAncestor(node.id, visible, parentById);
+        const parentId = parentById.get(node.id);
+        const parent = parentId ? nearestVisibleAncestor(parentId, visible, parentById) : null;
         if (!parent || parent === node.id) {
             return;
         }
@@ -624,11 +674,7 @@ function layoutAndRender(data, { refit } = {}) {
         simulation = null;
     }
 
-    if (layoutMode === 'force') {
-        applyForceLayout(data);
-    } else {
-        applyHierarchyLayout(data);
-    }
+    applyTreeLayout(data);
 
     drawGraph(data);
 
@@ -643,7 +689,7 @@ function layoutAndRender(data, { refit } = {}) {
     }
 }
 
-function applyHierarchyLayout(data) {
+function applyTreeLayout(data) {
     const hierarchy = buildHierarchyCache(data);
     const nodeWrappers = new Map();
 
@@ -656,7 +702,8 @@ function applyHierarchyLayout(data) {
         if (!parentWrapper) {
             return;
         }
-        children.forEach((childId) => {
+        const orderedChildren = sortedChildren(parentId, data, hierarchy);
+        orderedChildren.forEach((childId) => {
             const childWrapper = nodeWrappers.get(childId);
             if (childWrapper && childWrapper !== parentWrapper) {
                 parentWrapper.children.push(childWrapper);
@@ -666,7 +713,8 @@ function applyHierarchyLayout(data) {
 
     const roots = data.nodes
         .filter((node) => !hierarchy.parentById.has(node.id))
-        .map((node) => nodeWrappers.get(node.id));
+        .map((node) => nodeWrappers.get(node.id))
+        .filter(Boolean);
 
     const syntheticRoot = {
         data: {
@@ -680,47 +728,21 @@ function applyHierarchyLayout(data) {
     };
 
     const hierarchyTree = d3.hierarchy(syntheticRoot, (d) => d.children);
-    const maxDepth = d3.max(hierarchyTree.descendants(), (node) => node.depth) || 1;
-    const radiusStep = Math.max(NODE_WIDTH, NODE_HEIGHT) * 2.4;
-    const radius = Math.max(1, maxDepth) * radiusStep;
+    const nodeSpacingX = NODE_WIDTH + 70;
+    const nodeSpacingY = NODE_HEIGHT + 60;
+    const treeLayout = d3.tree()
+        .nodeSize([nodeSpacingX, nodeSpacingY])
+        .separation((a, b) => (a.parent === b.parent ? 1 : 1.4));
 
-    const treeLayout = d3.tree().size([2 * Math.PI, radius]);
     treeLayout(hierarchyTree);
 
     hierarchyTree.descendants().forEach((node) => {
         if (node.data && node.data.data) {
-            const angle = node.x - Math.PI / 2;
-            node.data.data.x = Math.cos(angle) * node.y;
-            node.data.data.y = Math.sin(angle) * node.y;
+            node.data.data.x = node.x;
+            node.data.data.y = node.y;
             node.data.data.depth = node.depth;
         }
     });
-}
-
-function applyForceLayout(data) {
-    const size = getSvgSize();
-    const baseRadius = Math.min(size.width, size.height) / 2;
-
-    data.nodes.forEach((node, index) => {
-        if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) {
-            const angle = index * 0.618 * Math.PI * 2;
-            const radius = Math.sqrt(index + 1) * 14;
-            node.x = Math.cos(angle) * radius;
-            node.y = Math.sin(angle) * radius;
-        }
-    });
-
-    simulation = d3.forceSimulation(data.nodes)
-        .force('link', d3.forceLink(data.edges)
-            .id((d) => d.id)
-            .distance(140)
-            .strength(0.9)
-        )
-        .force('charge', d3.forceManyBody().strength(-380))
-        .force('center', d3.forceCenter(0, 0))
-        .force('radial', d3.forceRadial(baseRadius * 0.5, 0, 0).strength(0.05))
-        .force('collision', d3.forceCollide().radius((d) => Math.max(d.width, d.height) / 2 + 16))
-        .on('tick', () => positionGraph());
 }
 
 function drawGraph(data) {
@@ -740,6 +762,14 @@ function drawGraph(data) {
         .text((d) => edgeTitle(d));
 
     const edges = edgeEnter.merge(edgeSelection);
+    edges.each((edge) => {
+        if (!edge.sourceNode) {
+            edge.sourceNode = data.nodeById.get(edge.source);
+        }
+        if (!edge.targetNode) {
+            edge.targetNode = data.nodeById.get(edge.target);
+        }
+    });
 
     const nodeSelection = nodesGroup
         .selectAll('g.node')
@@ -777,8 +807,9 @@ function drawGraph(data) {
         .attr('class', (d) => nodeClass(d))
         .on('click', (event, d) => {
             event.stopPropagation();
+            toggleNodeExpansion(d);
             showNodeDetails(d);
-            highlightNeighbors(d, data);
+            highlightNeighbors(d, currentView || data);
         });
 
     svg.on('click', () => clearHighlights());
@@ -793,7 +824,8 @@ function drawGraph(data) {
 
 function nodeClass(node) {
     const kind = displayKindKey(node) || 'unknown';
-    return `node kind-${kind} group-${nodeGroup(node)}`;
+    const state = typeof node.expanded === 'boolean' ? (node.expanded ? 'is-expanded' : 'is-collapsed') : '';
+    return `node kind-${kind} group-${nodeGroup(node)} ${state}`.trim();
 }
 
 function positionGraph(edgesSelection, nodesSelection) {
@@ -808,18 +840,35 @@ function positionGraph(edgesSelection, nodesSelection) {
     edges.attr('d', (d) => edgePath(d));
 }
 
+function toggleNodeExpansion(node) {
+    if (!node || !hierarchyCache) {
+        return;
+    }
+    const nodeId = node.id;
+    if (!isContainerNode(nodeId, node, hierarchyCache)) {
+        return;
+    }
+    const depth = hierarchyCache.depthById.get(nodeId) || 0;
+    const effectiveExpanded = isNodeExpanded(nodeId, node, depth, currentLevel || 0, hierarchyCache);
+    expansionOverrides.set(nodeId, effectiveExpanded ? 'collapsed' : 'expanded');
+    updateView({ refit: false });
+}
+
 function nodePosition(node) {
     return { x: node.x || 0, y: node.y || 0 };
 }
 
 function edgePath(edge) {
-    const source = edge.sourceNode;
-    const target = edge.targetNode;
+    const source = edge.sourceNode || (currentView && currentView.nodeById ? currentView.nodeById.get(edge.source) : null);
+    const target = edge.targetNode || (currentView && currentView.nodeById ? currentView.nodeById.get(edge.target) : null);
     if (!source || !target) {
         return '';
     }
-
-    return `M${source.x},${source.y} L${target.x},${target.y}`;
+    if (!Number.isFinite(source.x) || !Number.isFinite(source.y) || !Number.isFinite(target.x) || !Number.isFinite(target.y)) {
+        return '';
+    }
+    const midY = (source.y + target.y) / 2;
+    return `M${source.x},${source.y} C${source.x},${midY} ${target.x},${midY} ${target.x},${target.y}`;
 }
 
 function dragstarted(event, d) {
@@ -994,6 +1043,7 @@ function fitToView() {
         .duration(500)
         .on('end', () => {
             suppressZoomUpdates = false;
+            handleZoomLevelChange(currentTransform.k);
         })
         .call(zoomBehavior.transform, d3.zoomIdentity.translate(translateX, translateY).scale(scale));
 }
@@ -1065,29 +1115,7 @@ function getAiSummary(node) {
     if (summary) {
         return summary;
     }
-    return fallbackSummary(node);
-}
-
-function fallbackSummary(node) {
-    const kind = displayKindKey(node);
-    const name = node.name || node.qualified_name || 'This item';
-
-    if (kind === 'function' || kind === 'method') {
-        return `${name} encapsulates executable behavior and participates in runtime flows.`;
-    }
-    if (kind === 'class' || kind === 'struct' || kind === 'interface') {
-        return `${name} defines a reusable type boundary and its associated responsibilities.`;
-    }
-    if (kind === 'module' || kind === 'package') {
-        return `${name} groups related files into a cohesive module boundary.`;
-    }
-    if (kind === 'file') {
-        return `${name} hosts related definitions and wires them together.`;
-    }
-    if (kind === 'directory') {
-        return `${name} contains a scoped slice of the codebase.`;
-    }
-    return `${name} represents a ${kind || 'code'} element within the system.`;
+    return null;
 }
 
 function labelForNode(node) {
@@ -1160,22 +1188,6 @@ function rawKindKey(node) {
 
 function displayKindKey(node) {
     return (node.displayKind || node.kind || '').toString().toLowerCase();
-}
-
-function isWorkspaceKind(node) {
-    return rawKindKey(node) === 'workspaceroot';
-}
-
-function isPackageKind(node) {
-    return rawKindKey(node) === 'package';
-}
-
-function isModuleKind(node) {
-    return rawKindKey(node) === 'module';
-}
-
-function isTopLevelDirectory(node, depthById) {
-    return rawKindKey(node) === 'directory' && (depthById.get(node.id) || 0) === 1;
 }
 
 function toId(value) {

@@ -15,8 +15,20 @@
 - `canopy-server` - HTTP/WebSocket server
 - `canopy-watcher` - File watcher (stub)
 
-## Current Status (2026-02-03)
+## Current Status (2026-02-04)
+TODO remove semantic zoom, its confusing. zoom should not change node expansion.
+Still just showing file connections. need to break it down further into objects and functions.
+need to associate config files and config values to objects/functions/files/modules. need sideway branches - its a network not a tree. no root node needed. semantic edges should connect modules.
 
+### ✅ Frontend Stabilization Updates (2026-02-04)
+1. **Semantic zoom**: zoom now auto-expands/contracts hierarchy levels.
+2. **Click behavior**: clicking a container toggles expand/collapse.
+3. **Edges**: containment edges are rendered and visible.
+4. **Layout**: static vertical tree layout replaces orbit/force.
+5. **AI summary**: remove fallback summaries when no AI data exists.
+
+### 🔄 Remaining Immediate TODOs
+1. Add a `.canopyignore` (or reuse `.gitignore`) to avoid indexing build output and vendor directories.
 
 ### ✅ Completed (Short)
 1. **Core plumbing**: workspace, graph model, CLI, HTTP/WS server, static client serving
@@ -177,6 +189,16 @@
 5. **Testing**
    - Add browser tests for zoom/aggregation and node-cap behavior.
    - Add snapshot tests for module aggregation and edge styling metadata.
+
+## Execution Plan (Next 2 Weeks)
+1. **Week 1: Backend Structure + AI**
+   - Ship module nodes + module edges (Stage B).
+   - Persist AI summaries on initial index and diff updates (Stage D).
+   - Define `.canopyignore` and update watcher/indexer to respect it.
+2. **Week 2: Frontend + Tests**
+   - Complete semantic zoom thresholds + node-cap enforcement (Stage C).
+   - Add module-aware aggregation and edge rollups in UI.
+   - Add browser regression tests for zoom/cap/layout stability.
 
 ## Blockers
 None currently - proceeding with graph visualization
